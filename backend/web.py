@@ -1,0 +1,152 @@
+"""The HTTP layer: turns requests into Tracker calls and serves static/.
+
+Started by __main__.py (python3 -m backend). In dev mode it restarts when backend/ changes
+and tells open pages to reload when backend/ or static/ changes.
+"""
+import json
+import os
+import re
+import sys
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qsl, urlparse
+
+from . import leetcode
+from .tracker import NotFound, to_slug
+
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+APP_DIR = os.path.dirname(BACKEND_DIR)
+STATIC_DIR = os.path.join(APP_DIR, "static")
+DEV = "--dev" in sys.argv
+
+
+def lookup(query):
+    """GET /api/lookup?q=<LeetCode link or slug>: the problem's details from LeetCode, for the Log dialog."""
+    slug = to_slug(query.get("q", ""))
+    info = leetcode.lookup(slug)
+    if info is None:
+        raise NotFound(f"LeetCode has no problem called {slug}.")
+    return info
+
+
+SLUG = r"([a-z0-9-]+)"
+# (method, path pattern, call). call gets the tracker, the input (JSON body, or the query string
+# for GET) and the path's slug if any.
+ROUTES = [
+    ("GET", r"/api/state", lambda t, body: t.view()),
+    ("GET", r"/api/lookup", lambda t, query: lookup(query)),
+    ("POST", r"/api/preview", lambda t, body: t.preview(body)),
+    ("POST", r"/api/problems", lambda t, body: t.add(body)),
+    ("PUT", r"/api/problems/" + SLUG, lambda t, body, slug: t.edit(slug, body)),
+    ("POST", r"/api/problems/" + SLUG + r"/retry", lambda t, body, slug: t.retry(slug, body)),
+    ("DELETE", r"/api/problems/" + SLUG, lambda t, body, slug: t.delete(slug)),
+    ("PUT", r"/api/plan", lambda t, body: t.set_plan(body)),
+    ("PUT", r"/api/settings", lambda t, body: t.update_settings(body)),
+    ("POST", r"/api/settings/reset", lambda t, body: t.reset_settings()),
+]
+CONTENT_TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css",
+                 ".json": "application/json", ".svg": "image/svg+xml"}
+
+
+class Handler(BaseHTTPRequestHandler):
+    tracker = None  # set by make_server
+
+    def log_message(self, fmt, *args):
+        pass
+
+    def send_body(self, body, ctype, status=200):
+        self.send_response(status)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def send_json(self, obj, status=200):
+        self.send_body(json.dumps(obj).encode(), "application/json", status)
+
+    def read_body(self):
+        n = int(self.headers.get("Content-Length") or 0)
+        body = json.loads(self.rfile.read(n)) if n else {}
+        if not isinstance(body, dict):
+            raise ValueError("Send a JSON object.")
+        return body
+
+    def route(self, method):
+        url = urlparse(self.path)
+        path = url.path
+        if DEV and path == "/api/dev/version":
+            return self.send_json({"version": code_version()})
+        if not path.startswith("/api/"):
+            return self.serve_static(path) if method == "GET" else self.send_json({"error": "Not found"}, 404)
+        for m, pattern, call in ROUTES:
+            match = re.fullmatch(pattern, path)
+            if m == method and match:
+                try:
+                    given = dict(parse_qsl(url.query)) if method == "GET" else self.read_body()
+                    return self.send_json(call(self.tracker, given, *match.groups()))
+                except NotFound as e:
+                    return self.send_json({"error": str(e)}, 404)
+                except leetcode.Unavailable as e:
+                    return self.send_json({"error": str(e)}, 502)
+                except (ValueError, TypeError) as e:  # json.JSONDecodeError is a ValueError
+                    return self.send_json({"error": str(e)}, 400)
+        self.send_json({"error": "Not found"}, 404)
+
+    def serve_static(self, path):
+        if path in ("", "/"):
+            path = "/index.html"
+        full = os.path.normpath(os.path.join(STATIC_DIR, path.lstrip("/")))
+        if not full.startswith(STATIC_DIR + os.sep) or not os.path.isfile(full):
+            if os.path.splitext(path)[1]:
+                return self.send_body(b"Not found", "text/plain", 404)
+            full = os.path.join(STATIC_DIR, "index.html")
+        with open(full, "rb") as f:
+            body = f.read()
+        self.send_body(body, CONTENT_TYPES.get(os.path.splitext(full)[1], "application/octet-stream"))
+
+    def do_GET(self): self.route("GET")
+    def do_POST(self): self.route("POST")
+    def do_PUT(self): self.route("PUT")
+    def do_DELETE(self): self.route("DELETE")
+
+
+def make_server(tracker, host, port):
+    handler = type("BoundHandler", (Handler,), {"tracker": tracker})
+    return ThreadingHTTPServer((host, port), handler)
+
+
+# ---------- dev mode ----------
+
+def code_files():
+    py = [os.path.join(BACKEND_DIR, f) for f in os.listdir(BACKEND_DIR) if f.endswith(".py")]
+    static = [os.path.join(d, f) for d, _, files in os.walk(STATIC_DIR) for f in files]
+    return py, static
+
+
+def code_version():
+    """Newest mtime across backend/ and static/. The page reloads when this changes."""
+    py, static = code_files()
+    return max(os.path.getmtime(f) for f in py + static if os.path.isfile(f))
+
+
+def restart_on_change():
+    """Restart the server when a file in backend/ changes. Skips edits that don't compile yet."""
+    def mtimes():
+        return {f: os.path.getmtime(f) for f in code_files()[0] if os.path.isfile(f)}
+    seen = mtimes()
+    while True:
+        time.sleep(0.5)
+        now = mtimes()
+        if now == seen:
+            continue
+        seen = now
+        try:
+            for f in now:
+                with open(f, encoding="utf-8") as src:
+                    compile(src.read(), f, "exec")
+        except SyntaxError as e:
+            print(f"Syntax error, not restarting: {e}")
+            continue
+        print("Code changed, restarting...")
+        # Start again the way we were started: python3 -m backend, with the same options
+        os.execv(sys.executable, [sys.executable, "-m", "backend"] + sys.argv[1:])
