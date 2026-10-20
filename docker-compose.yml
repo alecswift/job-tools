@@ -6,10 +6,13 @@ services:
       - "127.0.0.1:8001:8001"   # localhost only, same as running it directly
     environment:
       TZ: America/Los_Angeles
+      TRACKER_DATA: /tracker-data/data.json
     volumes:
+      - .:/data
+      # Where data.json lives: this folder unless TRACKER_DATA_DIR is set (in .env, say).
       # Mount the folder, not data.json itself: saves write a temp file and rename it,
       # which fails on a single-file bind mount.
-      - .:/data
+      - ${TRACKER_DATA_DIR:-.}:/tracker-data
     # Run the code from the mounted folder in dev mode, so edits to backend/ and
     # static/ take effect without a rebuild (the server restarts, open pages reload).
     working_dir: /data
