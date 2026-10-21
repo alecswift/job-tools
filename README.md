@@ -12,7 +12,7 @@ python3 -m backend
 
 from this folder, then open http://localhost:8001.
 
-While editing the code, run `python3 -m backend --dev` instead. The server restarts itself when anything in `backend/` changes, and open pages reload when anything in `backend/` or `static/` changes.
+While editing the code, run `python3 -m backend --dev` instead. The server restarts itself when any `.py` file in `backend/` (subfolders included) changes, and open pages reload when that or anything in `static/` changes.
 
 ### Or with Docker
 
@@ -22,7 +22,7 @@ docker compose up -d --build
 
 Same address, http://localhost:8001. The container reads and writes the same `data.json` in this folder, so you can switch between the two ways freely (just don't run both at once). It restarts on its own unless you stop it with `docker compose down`. It runs the code straight from this folder in `--dev` mode, so edits to `backend/` or `static/` take effect on save with no rebuild. Only changes to the `Dockerfile` need `up --build`. Change `TZ` in `docker-compose.yml` if you move time zones, since it decides what "today" is.
 
-Everything is saved to `data.json` in this folder. Back up or copy that one file to move your data.
+Everything is saved to `data.json` in this folder. Back up or copy that one file to move your data. To keep it somewhere else with Docker, set `TRACKER_DATA_DIR` (in `.env`, say) to the folder that should hold `data.json`.
 
 ## Pages
 
@@ -31,20 +31,20 @@ Everything is saved to `data.json` in this folder. Back up or copy that one file
 - **Log**: every problem in one table, with sortable columns, search, and pattern and status filters. Green column headers are calculated.
 - **How it works**: the formulas, filled in with your current settings, and the settings form. Edit the weights, spacing, mastery threshold, target times and pattern list, then save.
 
-Problems are identified by their LeetCode slug (`two-sum`), the same key the plan uses, so a problem can only be logged once. Use **+ Log problem** for a new problem: paste its LeetCode link and the number, name, difficulty and a guessed pattern fill themselves in (anything you've already typed is left alone) and **Log retry** when you redo one. A retry sets the date, adds 1 to Attempts and re-scores the problem, the same as the sheet's instructions. Each attempt's scores are also kept in a `history` list in `data.json`.
+Problems are identified by their LeetCode slug (`two-sum`), the same key the plan uses, so a problem can only be logged once. Use **+ Log problem** for a new problem: paste its LeetCode link and the number, name, difficulty and a guessed pattern fill themselves in (anything you've already typed is left alone). A link pasted into the Problem box moves to the link box, and if the problem is already logged the dialog offers **Log a retry instead**. Use **Log retry** when you redo one. A retry sets the date, adds 1 to Attempts and re-scores the problem, the same as the sheet's instructions. Leaving its notes blank keeps the problem's current notes. Each attempt's scores are also kept in a `history` list in `data.json`.
 
 ## Files
 
 | File | What it is |
 |---|---|
 | **`backend/`** | **The Python back end, run with `python3 -m backend`** |
-| `backend/__main__.py` | Starts the server: reads the options below and picks the data file |
-| `backend/web.py` | HTTP layer: maps each API route to a tracker call, serves `static/`, dev-mode reloading |
+| `backend/__main__.py` | Starts the server: reads the options below (and `--dev`) and picks the data file |
+| `backend/web.py` | HTTP layer: maps each API route to a tracker call, serves `static/` |
+| `backend/devmode.py` | `--dev` only: restarts the server when `backend/` changes and tells open pages when to reload |
 | `backend/tracker.py` | Every change to problems, plan marks and settings: add, edit, retry, delete, plan, settings. Also upgrades old `data.json` files |
 | `backend/scheduling.py` | The formulas (Time Score, Struggle, Interval, Due Date, Priority, Status) and settings validation. The only copy of them: the dialogs' preview asks the server |
 | `backend/storage.py` | Saving: the JSON file, plus an in-memory version for tests |
 | `backend/leetcode.py` | Looks up a problem's number, title, difficulty and tags on LeetCode (public, no sign-in), for the Log dialog |
-| `backend/import_xlsx.py` | Re-import from the spreadsheet (`pip install openpyxl`, then `python3 -m backend.import_xlsx LeetCode_Retry_Tracker.xlsx`). Matches problems by slug, so you can run it again safely. |
 | **`static/`** | **The front end** |
 | `static/index.html`, `style.css` | The page shell and styles |
 | `static/main.js` | Picks the page from the URL, handles clicks and form input |
@@ -71,7 +71,7 @@ Every call returns the full state (same as `GET /api/state`) except `/api/previe
 
 | Method | Path | Body |
 |---|---|---|
-| GET | `/api/state` | Returns settings, problems with calculated fields, the interval table, plan marks and today's date |
+| GET | `/api/state` | Returns settings, problems with calculated fields, the interval table, the highest possible priority (`maxPriority`), plan marks and today's date |
 | GET | `/api/lookup?q=<link or slug>` | Returns `slug, lc, name, difficulty, premium, tags` from LeetCode. 404 if there's no such problem, 502 if LeetCode can't be reached |
 | POST | `/api/preview` | `difficulty, attempts, help, confidence, time`. Returns what that would score (`struggle, interval, timeScore, mastered`) without saving |
 | POST | `/api/problems` | `name, difficulty, help, confidence`; optional `slug` (a slug or a LeetCode link; built from the name if left out), `lc, pattern, lastAttempted, attempts, time, notes` |
@@ -81,8 +81,9 @@ Every call returns the full state (same as `GET /api/state`) except `/api/previe
 | PUT | `/api/settings` | Any setting, or `patterns` as a list |
 | POST | `/api/settings/reset` | Restores the default numbers and keeps your patterns |
 | PUT | `/api/plan` | `quiz`: list of problem slugs done by Quiz. Replaces the saved list. Solved plan problems are the logged ones, so aren't sent |
+| GET | `/api/dev/version` | `--dev` only (404 otherwise): `version`, which changes when the code does. Open pages poll it to reload |
 
-Options: `PORT=9000 python3 -m backend` changes the port, `HOST` changes the bind address (default `127.0.0.1`), and `TRACKER_DATA=/path/file.json` changes where data is stored. The server listens on localhost only.
+Options: `PORT=9000 python3 -m backend` changes the port, `HOST` changes the bind address, and `TRACKER_DATA=/path/file.json` changes where data is stored. `HOST` defaults to `127.0.0.1`, so the server is only reachable from this machine unless you change it. The Docker image binds to `0.0.0.0` inside the container, but `docker-compose.yml` publishes the port on `127.0.0.1` only, so it's localhost-only too.
 
 ## Credits
 

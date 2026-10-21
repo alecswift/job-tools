@@ -94,19 +94,16 @@ class ProblemTest(unittest.TestCase):
         t.add(two_sum())
         self.assertEqual(t.delete("two-sum")["problems"], [])
 
-    def test_upsert_adds_then_updates_keeping_history(self):
-        t, store = tracker()
-        self.assertEqual(t.upsert(two_sum()), "added")
-        t.retry("two-sum", {"help": 0, "confidence": 10})
-        self.assertEqual(t.upsert(two_sum(help=1)), "updated")
-        p = store.data["problems"][0]
-        self.assertEqual((p["help"], len(p["history"])), (1.0, 2))
-
     def test_preview_scores_without_saving(self):
         t, store = tracker()
         r = t.preview({"difficulty": "Medium", "attempts": "2", "help": "0", "confidence": "10", "time": ""})
         self.assertEqual(r, {"timeScore": None, "struggle": 0.0, "interval": 32, "mastered": True})
         self.assertIsNone(store.data)
+
+    def test_preview_scores_unknown_difficulty_as_medium(self):
+        t, _ = tracker()
+        fields = {"attempts": 1, "help": 0, "confidence": 10, "time": 40}
+        self.assertEqual(t.preview(dict(fields, difficulty="??")), t.preview(dict(fields, difficulty="Medium")))
 
 
 class PlanAndSettingsTest(unittest.TestCase):

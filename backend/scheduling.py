@@ -6,6 +6,15 @@ are worked out. The server, the dialog preview and the "How it works" table all 
 import math
 from datetime import date, datetime
 
+DIFFICULTIES = ("Easy", "Medium", "Hard")
+DEFAULT_DIFFICULTY = "Medium"
+RETRY_NOW, NOT_YET, MASTERED = "Retry now", "Not yet", "Mastered"
+
+# What one attempt records, and what a problem needs to be scored
+ATTEMPT_FIELDS = ("help", "confidence", "time")
+SCORE_FIELDS = ("difficulty", "attempts") + ATTEMPT_FIELDS
+ATTEMPT_DEFAULTS = {"help": 0, "confidence": 10}  # solved solo, fully confident
+
 DEFAULT_SETTINGS = {
     "weightHelp": 0.45,         # share of Struggle from Help Needed
     "weightConfidence": 0.35,   # share from (10 - Confidence)
@@ -35,31 +44,32 @@ def xround(x, n=0):
     return int(v) if n == 0 else v
 
 
-def parse_date(s):
-    return datetime.strptime(s, "%Y-%m-%d").date() if s else None
+def parse_date(text):
+    return datetime.strptime(text, "%Y-%m-%d").date() if text else None
 
 
-def _interval(struggle, attempts, s):
-    return xround((1 + (10 - struggle) * s["spacingFactor"]) * 2 ** (attempts - 1))
+def _interval(struggle, attempts, settings):
+    return xround((1 + (10 - struggle) * settings["spacingFactor"]) * 2 ** (attempts - 1))
 
 
-def score(p, s, today):
+def score(problem, settings, today):
     """The calculated columns for one problem's latest attempt.
 
-    p needs difficulty, attempts, help, confidence and time (minutes, or None if not tracked).
-    lastAttempted is optional: without it there's no due date, priority or status, which is
-    what the dialog preview wants.
+    problem needs SCORE_FIELDS: difficulty, attempts, help, confidence and time (minutes, or None
+    if not tracked). lastAttempted is optional: without it there's no due date, priority or status,
+    which is what the dialog preview wants.
     """
-    help_, conf, t = p.get("help"), p.get("confidence"), p.get("time")
-    help_ = 0 if help_ is None else float(help_)
-    conf = 10 if conf is None else float(conf)
-    target = s.get("target" + (p.get("difficulty") or "Medium"), 40) or 40
+    help_ = ATTEMPT_DEFAULTS["help"] if problem.get("help") is None else float(problem["help"])
+    conf = ATTEMPT_DEFAULTS["confidence"] if problem.get("confidence") is None else float(problem["confidence"])
+    minutes = problem.get("time")
+    difficulty = problem.get("difficulty")
+    target = settings["target" + (difficulty if difficulty in DIFFICULTIES else DEFAULT_DIFFICULTY)]
 
     time_score = None
-    if t not in (None, ""):
-        time_score = min(10.0, 5 * float(t) / target)
+    if minutes not in (None, ""):
+        time_score = min(10.0, 5 * float(minutes) / target)
 
-    wh, wc, wt = s["weightHelp"], s["weightConfidence"], s["weightTime"]
+    wh, wc, wt = settings["weightHelp"], settings["weightConfidence"], settings["weightTime"]
     if time_score is None:
         # No time tracked: Struggle uses only Help and Confidence, rescaled to 0-10
         denom = (wh + wc) or 1
@@ -68,27 +78,27 @@ def score(p, s, today):
         struggle = wh * help_ + wc * (10 - conf) + wt * time_score
     struggle = xround(struggle, 1)
 
-    attempts = max(1, int(p.get("attempts") or 1))
-    interval = _interval(struggle, attempts, s)
+    attempts = max(1, int(problem.get("attempts") or 1))
+    interval = _interval(struggle, attempts, settings)
 
-    last = parse_date(p.get("lastAttempted"))
+    last = parse_date(problem.get("lastAttempted"))
     due = date.fromordinal(last.toordinal() + interval) if last else None
-    mastered = struggle < s["masteredBelow"] and attempts >= s["masteredMinAttempts"]
+    mastered = struggle < settings["masteredBelow"] and attempts >= settings["masteredMinAttempts"]
 
     if last is None or mastered:
         priority = 0.0
     else:
         days_since = (today - last).days
-        priority = xround(struggle * min(s["overdueCap"], days_since / max(1, interval)), 1)
+        priority = xround(struggle * min(settings["overdueCap"], days_since / max(1, interval)), 1)
 
     if mastered:
-        status = "Mastered"
+        status = MASTERED
     elif last is None:
         status = ""
     elif today >= due:
-        status = "Retry now"
+        status = RETRY_NOW
     else:
-        status = "Not yet"
+        status = NOT_YET
 
     return {
         "timeScore": None if time_score is None else xround(time_score, 1),
@@ -102,26 +112,32 @@ def score(p, s, today):
     }
 
 
-def interval_table(s):
+def max_priority(settings):
+    """The highest Retry Priority can go: Struggle 10, as overdue as the cap allows. Scales the queue's priority bars."""
+    return 10 * settings["overdueCap"]
+
+
+def interval_table(settings):
     """Days until the next retry for Struggle 0-10 on attempts 1-4, for the "How it works" page."""
-    return [{"struggle": st, "intervals": [_interval(st, a, s) for a in (1, 2, 3, 4)]} for st in range(0, 11)]
+    return [{"struggle": struggle, "intervals": [_interval(struggle, a, settings) for a in (1, 2, 3, 4)]}
+            for struggle in range(0, 11)]
 
 
 def clean_settings(body, current):
     """Apply a partial settings update. Raises ValueError on bad input."""
-    s = dict(current)
+    settings = dict(current)
     for key in NUM_SETTINGS:
         if key in body:
-            v = float(body[key])
-            if v < 0:
+            value = float(body[key])
+            if value < 0:
                 raise ValueError(f"{key} can't be negative.")
-            s[key] = v
-    for key in ("targetEasy", "targetMedium", "targetHard"):
-        if s[key] <= 0:
+            settings[key] = value
+    for difficulty in DIFFICULTIES:
+        if settings["target" + difficulty] <= 0:
             raise ValueError("Target times must be above 0.")
     if "patterns" in body:
         if not isinstance(body["patterns"], list):
             raise ValueError("patterns must be a list.")
         pats = [str(x).strip() for x in body["patterns"] if str(x).strip()]
-        s["patterns"] = list(dict.fromkeys(pats))
-    return s
+        settings["patterns"] = list(dict.fromkeys(pats))
+    return settings

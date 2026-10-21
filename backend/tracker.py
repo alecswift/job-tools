@@ -10,7 +10,8 @@ import re
 import threading
 from datetime import date
 
-from .scheduling import DEFAULT_SETTINGS, clean_settings, interval_table, parse_date, score
+from .scheduling import (ATTEMPT_FIELDS, DEFAULT_SETTINGS, DIFFICULTIES, SCORE_FIELDS, clean_settings, interval_table,
+                         max_priority, parse_date, score)
 
 VERSION = 3
 FIELDS = ("lc", "name", "difficulty", "pattern", "lastAttempted", "attempts", "help", "confidence", "time", "notes")
@@ -29,9 +30,9 @@ def slugify(name):
 def to_slug(text):
     """A LeetCode problem URL, a slug, or a title -> the slug."""
     text = str(text).strip()
-    m = LC_URL.match(text.lower())
-    if m:
-        return m.group(1)
+    match = LC_URL.match(text.lower())
+    if match:
+        return match.group(1)
     if "/" in text:
         raise ValueError("Use a leetcode.com/problems/... link or just the slug, like two-sum.")
     slug = slugify(text)
@@ -44,8 +45,9 @@ def link(slug):
     return f"https://leetcode.com/problems/{slug}/"
 
 
-def snapshot(p):
-    return {k: p.get(k) for k in ("lastAttempted", "help", "confidence", "time")}
+def snapshot(problem):
+    """One history entry: when the attempt was and how it went."""
+    return {k: problem.get(k) for k in ("lastAttempted",) + ATTEMPT_FIELDS}
 
 
 def migrate(data):
@@ -53,16 +55,16 @@ def migrate(data):
     data.setdefault("problems", [])
     if data.get("version", 1) < 2:
         seen = set()
-        for p in data["problems"]:
-            m = LC_URL.match(str(p.get("link") or "").lower())
-            slug = m.group(1) if m else slugify(p["name"])
+        for problem in data["problems"]:
+            match = LC_URL.match(str(problem.get("link") or "").lower())
+            slug = match.group(1) if match else slugify(problem["name"])
             base, n = slug, 2
             while slug in seen:   # two entries for one problem: keep both rather than lose one
                 slug, n = f"{base}-{n}", n + 1
             seen.add(slug)
-            p["slug"] = slug
-            p.pop("id", None)
-            p.pop("link", None)
+            problem["slug"] = slug
+            problem.pop("id", None)
+            problem.pop("link", None)
         data["version"] = 2
     data.setdefault("plan", {"quiz": []})
     if data["version"] < 3:
@@ -79,10 +81,10 @@ def migrate(data):
 
 def clean_plan(body):
     """Plan marks: the slugs done via the NeetCode quiz. Solved plan problems are the logged ones, so aren't stored here."""
-    v = body.get("quiz", [])
-    if not isinstance(v, list) or not all(isinstance(x, str) and re.fullmatch(SLUG, x) for x in v):
+    quiz = body.get("quiz", [])
+    if not isinstance(quiz, list) or not all(isinstance(x, str) and re.fullmatch(SLUG, x) for x in quiz):
         raise ValueError("quiz must be a list of problem slugs.")
-    return {"quiz": list(dict.fromkeys(v))}
+    return {"quiz": list(dict.fromkeys(quiz))}
 
 
 class Tracker:
@@ -100,75 +102,54 @@ class Tracker:
     def preview(self, fields):
         """Scores for a problem that isn't saved, for the dialogs: struggle, interval, mastered."""
         with self.lock:
-            s = self._load()["settings"]
-        p = {k: fields.get(k) for k in ("difficulty", "attempts", "help", "confidence", "time")}
-        if p["difficulty"] not in ("Easy", "Medium", "Hard"):
-            p["difficulty"] = "Medium"
-        r = score(p, s, self.today())
-        return {k: r[k] for k in ("timeScore", "struggle", "interval", "mastered")}
+            settings = self._load()["settings"]
+        scores = score({k: fields.get(k) for k in SCORE_FIELDS}, settings, self.today())
+        return {k: scores[k] for k in ("timeScore", "struggle", "interval", "mastered")}
 
     # ---------- problems ----------
 
     def add(self, fields):
         def change(data):
-            p = self._clean(fields)
-            if self._find(data, p["slug"]) is not None:
-                raise ValueError(f"“{p['name']}” is already logged. Use Log retry when you redo it.")
-            p["history"] = [snapshot(p)]
-            data["problems"].append(p)
+            problem = self._clean(fields)
+            if self._find(data, problem["slug"]) is not None:
+                raise ValueError(f"“{problem['name']}” is already logged. Use Log retry when you redo it.")
+            problem["history"] = [snapshot(problem)]
+            data["problems"].append(problem)
         return self._change(change)
 
     def edit(self, slug, fields):
         """Correct a problem's details. The latest history entry follows the edit."""
         def change(data):
             i = self._index(data, slug)
-            cur = data["problems"][i]
-            p = self._clean(fields, cur)
-            j = self._find(data, p["slug"])
+            current = data["problems"][i]
+            problem = self._clean(fields, current)
+            j = self._find(data, problem["slug"])
             if j is not None and j != i:
-                raise ValueError(f"{p['slug']} is already logged as “{data['problems'][j]['name']}”.")
-            history = list(cur.get("history") or [])
-            p["history"] = history[:-1] + [snapshot(p)]
-            data["problems"][i] = p
+                raise ValueError(f"{problem['slug']} is already logged as “{data['problems'][j]['name']}”.")
+            history = list(current.get("history") or [])
+            problem["history"] = history[:-1] + [snapshot(problem)]
+            data["problems"][i] = problem
         return self._change(change)
 
     def retry(self, slug, fields):
-        """Log a new attempt: the given (or today's) date, one more attempt, fresh scores."""
+        """Log a new attempt: the given (or today's) date, one more attempt, fresh scores. Blank notes keep the old ones."""
         def change(data):
             i = self._index(data, slug)
-            cur = data["problems"][i]
-            upd = {k: fields.get(k) for k in ("help", "confidence", "time")}
-            upd["lastAttempted"] = fields.get("date") or self.today().isoformat()
-            upd["attempts"] = int(cur.get("attempts") or 1) + 1
+            current = data["problems"][i]
+            attempt = {k: fields.get(k) for k in ATTEMPT_FIELDS}
+            attempt["lastAttempted"] = fields.get("date") or self.today().isoformat()
+            attempt["attempts"] = int(current.get("attempts") or 1) + 1
             if fields.get("notes"):
-                upd["notes"] = fields["notes"]
-            p = self._clean(upd, cur)
-            p["history"] = list(cur.get("history") or []) + [snapshot(p)]
-            data["problems"][i] = p
+                attempt["notes"] = fields["notes"]
+            problem = self._clean(attempt, current)
+            problem["history"] = list(current.get("history") or []) + [snapshot(problem)]
+            data["problems"][i] = problem
         return self._change(change)
 
     def delete(self, slug):
         def change(data):
             data["problems"].pop(self._index(data, slug))
         return self._change(change)
-
-    def upsert(self, fields):
-        """Add the problem, or replace one with the same slug and keep its history. Returns "added" or "updated"."""
-        result = []
-
-        def change(data):
-            p = self._clean(fields)
-            i = self._find(data, p["slug"])
-            if i is None:
-                p["history"] = [snapshot(p)]
-                data["problems"].append(p)
-                result.append("added")
-            else:
-                p["history"] = data["problems"][i].get("history") or [snapshot(p)]
-                data["problems"][i] = p
-                result.append("updated")
-        self._change(change)
-        return result[0]
 
     # ---------- plan and settings ----------
 
@@ -204,10 +185,10 @@ class Tracker:
             return self._view(data)
 
     def _view(self, data):
-        today, s = self.today(), data["settings"]
-        problems = [dict(p, link=link(p["slug"]), **score(p, s, today)) for p in data["problems"]]
-        return {"today": today.isoformat(), "settings": s, "problems": problems,
-                "intervalTable": interval_table(s), "plan": data["plan"]}
+        today, settings = self.today(), data["settings"]
+        problems = [dict(p, link=link(p["slug"]), **score(p, settings, today)) for p in data["problems"]]
+        return {"today": today.isoformat(), "settings": settings, "problems": problems,
+                "intervalTable": interval_table(settings), "maxPriority": max_priority(settings), "plan": data["plan"]}
 
     @staticmethod
     def _find(data, slug):
@@ -220,35 +201,35 @@ class Tracker:
         return i
 
     def _clean(self, body, existing=None):
-        p = dict(existing or {})
+        problem = dict(existing or {})
         for key in FIELDS:
             if key in body:
-                p[key] = body[key]
-        if not str(p.get("name") or "").strip():
+                problem[key] = body[key]
+        if not str(problem.get("name") or "").strip():
             raise ValueError("Problem name is required.")
-        p["name"] = str(p["name"]).strip()
+        problem["name"] = str(problem["name"]).strip()
         if body.get("slug"):
-            p["slug"] = to_slug(body["slug"])
-        elif not p.get("slug"):
-            p["slug"] = to_slug(p["name"])
-        if p.get("difficulty") not in ("Easy", "Medium", "Hard"):
-            raise ValueError("Difficulty must be Easy, Medium or Hard.")
+            problem["slug"] = to_slug(body["slug"])
+        elif not problem.get("slug"):
+            problem["slug"] = to_slug(problem["name"])
+        if problem.get("difficulty") not in DIFFICULTIES:
+            raise ValueError(f"Difficulty must be {', '.join(DIFFICULTIES[:-1])} or {DIFFICULTIES[-1]}.")
         for key in ("help", "confidence"):
-            v = p.get(key)
-            if v in (None, ""):
+            value = problem.get(key)
+            if value in (None, ""):
                 raise ValueError(f"{key.capitalize()} is required (0-10).")
-            v = float(v)
-            if not 0 <= v <= 10:
+            value = float(value)
+            if not 0 <= value <= 10:
                 raise ValueError(f"{key.capitalize()} must be between 0 and 10.")
-            p[key] = v
-        p["time"] = None if p.get("time") in (None, "") else float(p["time"])
-        if p["time"] is not None and p["time"] < 0:
+            problem[key] = value
+        problem["time"] = None if problem.get("time") in (None, "") else float(problem["time"])
+        if problem["time"] is not None and problem["time"] < 0:
             raise ValueError("Time can't be negative.")
-        p["attempts"] = max(1, int(p.get("attempts") or 1))
-        p["lc"] = None if p.get("lc") in (None, "") else int(p["lc"])
-        p["lastAttempted"] = p.get("lastAttempted") or self.today().isoformat()
-        parse_date(p["lastAttempted"])  # raises if malformed
-        p["notes"] = p.get("notes") or ""
-        p["pattern"] = p.get("pattern") or ""
-        p.setdefault("history", [])
-        return p
+        problem["attempts"] = max(1, int(problem.get("attempts") or 1))
+        problem["lc"] = None if problem.get("lc") in (None, "") else int(problem["lc"])
+        problem["lastAttempted"] = problem.get("lastAttempted") or self.today().isoformat()
+        parse_date(problem["lastAttempted"])  # raises if malformed
+        problem["notes"] = problem.get("notes") or ""
+        problem["pattern"] = problem.get("pattern") or ""
+        problem.setdefault("history", [])
+        return problem

@@ -57,6 +57,20 @@ class ServerTest(unittest.TestCase):
         status, r = self.json("POST", "/api/preview", {"difficulty": "Easy", "help": 0, "confidence": 10, "attempts": 1})
         self.assertEqual((status, r["struggle"], r["interval"]), (200, 0.0, 16))
 
+    def test_state_has_max_priority(self):
+        self.assertEqual(self.json("GET", "/api/state")[1]["maxPriority"], 20.0)
+
+    def test_dev_version_only_in_dev_mode(self):
+        self.assertEqual(self.json("GET", "/api/dev/version")[0], 404)
+        dev = make_server(Tracker(MemoryStore()), "127.0.0.1", 0, dev_version=lambda: 123.0)
+        threading.Thread(target=dev.serve_forever, daemon=True).start()
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{dev.server_address[1]}/api/dev/version") as r:
+                self.assertEqual(json.load(r), {"version": 123.0})
+        finally:
+            dev.shutdown()
+            dev.server_close()
+
     def test_lookup(self):
         leetcode._cache.clear()
         answer = {"questionFrontendId": "1", "title": "Two Sum", "difficulty": "Easy", "isPaidOnly": False, "topicTags": []}
