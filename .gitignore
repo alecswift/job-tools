@@ -1,9 +1,3 @@
-__pycache__/
-*.pyc
-.venv/
-venv/
-.env
+# Separate private repo holding the LeetCode tracker data (see leetcode/.env)
+leetcode-data/
 .DS_Store
-data.json
-data.json.tmp
-*.xlsx
