@@ -4,6 +4,7 @@ import { $, DIFF, local, toast, fmtDate } from "./util.js";
 import { state, onChange, load, setPlan, saveSettings, resetSettings } from "./store.js";
 import { ui, TEXT_COLS, planSets, viewPlan, viewQueue, viewLog, logRows, viewHow, weightSum, weightWarning } from "./views.js";
 import { openProblem, openRetry } from "./dialogs.js";
+import { appSwitcher, devReload } from "/design/ui.js";
 
 const VIEWS = { plan: viewPlan, retryqueue: viewQueue, log: viewLog, how: viewHow };
 
@@ -85,18 +86,6 @@ load().catch(() => {
   $("#view").innerHTML = `<div class="empty">Can't reach the server. Start it with <span class="mono">python3 -m backend</span> and reload.</div>`;
 });
 
+appSwitcher("leetcode");
 // Dev mode (python3 -m backend --dev): reload when the code changes.
-// Stops on the first 404, so it does nothing in normal mode.
-(async function devReload() {
-  let ver = null;
-  while (true) {
-    try {
-      const res = await fetch("/api/dev/version");
-      if (res.status === 404) return;
-      const latest = (await res.json()).version;
-      if (ver !== null && latest !== ver) return location.reload();
-      ver = latest;
-    } catch { /* server restarting */ }
-    await new Promise(res => setTimeout(res, 1000));
-  }
-})();
+devReload();

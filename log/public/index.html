@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="/design/tokens.css">
+<link rel="stylesheet" href="/design/components.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <div class="brand">Log<small id="today"></small></div>
+  <nav>
+    <a href="#week" data-view="week">Week</a>
+    <a href="#log" data-view="log">Log</a>
+  </nav>
+  <div class="timer" id="timer"></div>
+  <button class="btn primary" id="addBtn">+ Log time</button>
+</div></header>
+
+<main id="view"></main>
+
+<dialog id="dlg"><form method="dialog" id="dlgForm" novalidate></form></dialog>
+<div class="toast" id="toast" role="status"></div>
+
+<script type="module" src="main.js"></script>
+</body>
+</html>

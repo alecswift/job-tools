@@ -1,7 +1,0 @@
-data.json
-data.json.tmp
-*.xlsx
-__pycache__
-.venv
-tests
-.env

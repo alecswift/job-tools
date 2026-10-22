@@ -1,0 +1,75 @@
+/* Shared components for every job-tools app, built on tokens.css: page shell, sticky header,
+   app switcher, buttons, tables, toolbar, dialogs, form fields, toast. Load after tokens.css,
+   before the app's own stylesheet. */
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 var(--body); }
+a { color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* header */
+.top { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
+.top-in { max-width: 1040px; margin: 0 auto; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; }
+.brand { font: 800 20px var(--display); letter-spacing: -0.01em; margin-right: auto; }
+.brand small { font: 400 13px var(--mono); color: var(--muted); margin-left: 8px; }
+nav { display: flex; gap: 4px; }
+nav a { text-decoration: none; padding: 6px 12px; border-radius: 6px; color: var(--muted); font-weight: 600; }
+nav a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); }
+
+/* app switcher (ui.js appSwitcher): sits above the header row */
+.apps { background: var(--sunk); border-bottom: 1px solid var(--line); }
+.apps-in { max-width: 1040px; margin: 0 auto; padding: 4px 16px; display: flex; gap: 2px; font-size: 13px; }
+.apps a { text-decoration: none; padding: 2px 10px; border-radius: 5px; color: var(--muted); font-weight: 600; }
+.apps a:hover { color: var(--fg); }
+.apps a[aria-current="page"] { color: var(--accent); background: var(--surface); }
+
+main { max-width: 1040px; margin: 0 auto; padding: 28px 16px 80px; display: grid; gap: 28px; }
+h1 { font: 800 clamp(28px, 5vw, 40px)/1.1 var(--display); letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
+h2 { font: 600 20px var(--display); margin: 0; }
+h3 { font: 600 16px var(--display); margin: 0; }
+.label { font: 600 12px var(--body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.muted { color: var(--muted); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+.btn { border: 1px solid var(--line); background: var(--surface); padding: 7px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; white-space: nowrap; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.btn.danger { color: var(--bad); }
+.btn.small { padding: 4px 10px; font-size: 14px; }
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.spread { justify-content: space-between; }
+.empty { padding: 20px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; }
+
+/* tables */
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.toolbar input, .toolbar select { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 7px 10px; min-width: 0; }
+.toolbar input { flex: 1 1 200px; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font: 600 11px var(--body); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); background: var(--sunk); }
+td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+th.num { text-align: right; }
+tbody tr:hover { background: var(--sunk); }
+tbody tr:last-child td { border-bottom: 0; }
+td a { text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.pos { color: var(--good); }
+.neg { color: var(--bad); }
+
+textarea { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 8px; width: 100%; resize: vertical; }
+
+/* dialog */
+dialog { border: 1px solid var(--line); border-radius: 14px; padding: 0; background: var(--surface); color: var(--fg); width: min(560px, calc(100vw - 24px)); }
+dialog::backdrop { background: rgb(0 0 0 / .35); }
+dialog form { padding: 22px; display: grid; gap: 14px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 480px) { .grid2 { grid-template-columns: 1fr; } }
+.f { display: grid; gap: 4px; min-width: 0; }
+.f > span { font-weight: 600; font-size: 14px; }
+.f input:not([type=range]), .f select { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 7px 9px; width: 100%; }
+.hint { font-size: 13px; color: var(--muted); }
+.err { color: var(--bad); font-size: 14px; min-height: 1em; }
+
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 8px 16px; border-radius: 8px; font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast.show { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }

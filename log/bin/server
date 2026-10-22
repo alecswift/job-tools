@@ -1,0 +1,16 @@
+#!/usr/bin/env ruby
+# Start the Log:  bin/server   then open http://localhost:8002
+# Add --dev to restart on lib/ edits and reload the browser on any code edit.
+# Options: PORT, HOST (default 127.0.0.1), LOG_DATA (path to the SQLite file), TZ.
+require "bundler/setup"
+require "rackup"
+require_relative "../lib/time_log"
+
+$stdout.sync = true # so the startup line shows in docker logs
+dev = ARGV.include?("--dev")
+ENV["LOG_DEV"] = "1" if dev
+host, port = ENV.fetch("HOST", "127.0.0.1"), Integer(ENV.fetch("PORT", "8002"))
+app = Rack::Builder.parse_file(File.expand_path("../config.ru", __dir__))
+puts "Log running at http://localhost:#{port}  (data: #{TimeLog.data_file})#{'  [dev]' if dev}"
+Thread.new { TimeLog::DevMode.restart_on_change } if dev
+Rackup::Handler.get("puma").run(app, Host: host, Port: port, Silent: true)

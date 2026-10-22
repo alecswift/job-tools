@@ -1,0 +1,10 @@
+# Both apps build from the repo root. BuildKit uses each app's Dockerfile.dockerignore instead;
+# this is the fallback for the legacy builder, so private data never goes to the daemon.
+.git
+.env
+**/.env
+leetcode-data
+log-data
+**/data.json
+**/*.sqlite3
+**/*.xlsx
