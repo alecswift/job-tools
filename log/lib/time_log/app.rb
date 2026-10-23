@@ -49,8 +49,9 @@ module TimeLog
     post("/api/timer/pause") { change { @tracker.pause_timer } }
     post("/api/timer/resume") { change { @tracker.resume_timer } }
     post("/api/timer/continue") { change { @tracker.continue_timer } }
-    # Returns the Log time dialog's fields, not the state: the entry is saved separately
-    post("/api/timer/stop") { json(@tracker.stop_timer) }
+    post("/api/timer/stop") { change { @tracker.stop_timer } }
+    post("/api/timer/log") { change { @tracker.log_timer(**input) } }
+    post("/api/timer/discard") { change { @tracker.discard_timer } }
 
     error(NotFound) { halt 404, json(error: env["sinatra.error"].message) }
     error(Invalid, ArgumentError, JSON::ParserError) { halt 400, json(error: env["sinatra.error"].message) }

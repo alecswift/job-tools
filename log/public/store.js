@@ -48,5 +48,5 @@ export const deleteActivity = id => change("DELETE", `/api/activities/${id}`);
 export const setPlan = (activity_id, weekly_min) => change("PUT", "/api/plan", { activity_id, weekly_min });
 
 export const timerAction = (action, body) => change("POST", `/api/timer/${action}`, body).catch(err => toast(err.message));
-// Stop returns the Log time dialog's fields; the entry is saved from the dialog
-export async function stopTimer() { const fields = await api("POST", "/api/timer/stop"); await load(); return fields; }
+// Saves the stopped timer as an entry, from the Log time dialog
+export const logTimer = body => change("POST", "/api/timer/log", body);

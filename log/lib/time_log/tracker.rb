@@ -53,16 +53,13 @@ module TimeLog
       end
     end
 
-    def add_entry(date:, activity_id:, credited_min:, what:, notes: nil, worked_min: nil)
-      raise Invalid, "That activity is archived." if activity!(activity_id)[:archived_at]
-      now = @clock.call
-      id = @db[:entries].insert(date: date!(date), activity_id:, credited_min: credit!(credited_min), what: what!(what),
-                                notes: blank_to_nil(notes), worked_min:, created_at: now, updated_at: now)
-      { id: }
+    # Entries from the timer are saved with log_timer, the only way to record worked minutes
+    def add_entry(date:, activity_id:, credited_min:, what:, notes: nil)
+      insert_entry(date:, activity_id:, credited_min:, what:, notes:, worked_min: nil)
     end
 
-    # Any of the add_entry fields except worked_min, which stays as the timer recorded it
-    def edit_entry(id, date: nil, activity_id: nil, credited_min: nil, what: nil, notes: nil, **)
+    # Any of the add_entry fields. worked_min stays as the timer recorded it.
+    def edit_entry(id, date: nil, activity_id: nil, credited_min: nil, what: nil, notes: nil)
       entry = @db[:entries].where(id:).first || raise(NotFound, "There's no entry #{id}.")
       changes = { updated_at: @clock.call }
       changes[:date] = date!(date) unless date.nil?
@@ -70,7 +67,7 @@ module TimeLog
       changes[:what] = what!(what) unless what.nil?
       changes[:notes] = blank_to_nil(notes) unless notes.nil?
       if activity_id && activity_id != entry[:activity_id]
-        raise Invalid, "That activity is archived." if activity!(activity_id)[:archived_at]
+        active_activity!(activity_id)
         changes[:activity_id] = activity_id
       end
       @db[:entries].where(id:).update(changes)
@@ -127,7 +124,7 @@ module TimeLog
     # A change always applies from this week's Monday. A version already starting then is updated;
     # otherwise a new one starts, copying the plan in effect.
     def set_plan(activity_id:, weekly_min:)
-      raise Invalid, "That activity is archived." if activity!(activity_id)[:archived_at]
+      active_activity!(activity_id)
       weekly!(weekly_min)
       plan_id = @db[:plans].where(effective_from: this_monday).get(:id) || begin
         current = plan_minutes(this_monday)
@@ -141,25 +138,33 @@ module TimeLog
     # ---------- the timer ----------
     # Elapsed time is always worked out from the stored times, so the timer survives reloads and restarts.
 
-    # nil when no timer runs. phase: work, paused, break (after a block) or ready (break over, waiting for Continue).
+    # nil when there's no timer. phase: work, paused, break (after a block), ready (break over, waiting for Continue)
+    # or stopped (waiting to be logged or discarded; entry has the Log time dialog's fields).
     def timer
       t = @db[:timer].first or return nil
-      now = @clock.call
+      now = t[:stopped_at] || @clock.call
       block_worked = [(t[:paused_at] || now) - t[:block_started_at] - t[:paused_sec], BLOCK_SEC].min.floor
       since_block = now - (t[:block_started_at] + t[:paused_sec] + BLOCK_SEC)
-      phase = if t[:paused_at] then "paused"
+      phase = if t[:stopped_at] then "stopped"
+              elsif t[:paused_at] then "paused"
               elsif block_worked < BLOCK_SEC then "work"
               elsif since_block < BREAK_SEC then "break"
               else "ready"
               end
-      { activity_id: t[:activity_id], activity: activity!(t[:activity_id])[:name], phase:,
-        block: t[:banked_sec] / BLOCK_SEC + 1, worked_sec: t[:banked_sec] + block_worked,
-        block_left_sec: BLOCK_SEC - block_worked, break_left_sec: phase == "break" ? (BREAK_SEC - since_block).ceil : 0 }
+      worked_sec = t[:banked_sec] + block_worked
+      current = { activity_id: t[:activity_id], activity: activity!(t[:activity_id])[:name], phase:,
+                  block: t[:banked_sec] / BLOCK_SEC + 1, worked_sec:,
+                  block_left_sec: BLOCK_SEC - block_worked, break_left_sec: phase == "break" ? (BREAK_SEC - since_block).ceil : 0 }
+      return current unless phase == "stopped"
+      worked_min = (worked_sec / 60.0).round
+      current.merge(entry: { date: t[:started_at].to_date, activity_id: t[:activity_id], worked_min:, credited_min: Credit.for_worked(worked_min) })
     end
 
     def start_timer(activity_id:)
-      raise Invalid, "A timer is already running." if @db[:timer].any?
-      raise Invalid, "That activity is archived." if activity!(activity_id)[:archived_at]
+      if (t = @db[:timer].first)
+        raise Invalid, t[:stopped_at] ? "Log or discard the stopped timer first." : "A timer is already running."
+      end
+      active_activity!(activity_id)
       now = @clock.call
       @db[:timer].insert(activity_id:, started_at: now, block_started_at: now)
     end
@@ -181,22 +186,46 @@ module TimeLog
       @db[:timer].update(banked_sec: Sequel[:banked_sec] + BLOCK_SEC, block_started_at: @clock.call, paused_sec: 0, paused_at: nil)
     end
 
-    # Clears the timer and returns the Log time dialog's fields. Saving the entry is a separate add_entry.
+    # Work ends here. The timer stays, with the entry's fields, until log_timer or discard_timer.
     def stop_timer
-      current = timer or raise(NotFound, "No timer is running.")
-      started = @db[:timer].get(:started_at)
+      timer_in!("work", "paused", "break", "ready")
+      @db[:timer].update(stopped_at: @clock.call)
+    end
+
+    # Saves the stopped timer as an entry and clears it. The fields are the Log time dialog's: date and
+    # activity_id default to the timer's, and worked_min is always the timer's.
+    def log_timer(credited_min:, what:, notes: nil, date: nil, activity_id: nil)
+      fields = timer_in!("stopped")[:entry]
+      @db.transaction do
+        added = insert_entry(date: date || fields[:date], activity_id: activity_id || fields[:activity_id],
+                             credited_min:, what:, notes:, worked_min: fields[:worked_min])
+        @db[:timer].delete
+        added
+      end
+    end
+
+    def discard_timer
+      timer_in!("stopped")
       @db[:timer].delete
-      worked_min = (current[:worked_sec] / 60.0).round
-      { date: started.to_date, activity_id: current[:activity_id], worked_min:, credited_min: Credit.for_worked(worked_min) }
     end
 
     private
 
     def timing?(activity_id) = @db[:timer].where(activity_id:).any?
 
+    # The timer, if it's in one of phases
     def timer_in!(*phases)
       current = timer or raise(NotFound, "No timer is running.")
       raise Invalid, "The timer can't do that while it's #{current[:phase]}." unless phases.include?(current[:phase])
+      current
+    end
+
+    def insert_entry(date:, activity_id:, credited_min:, what:, notes:, worked_min:)
+      active_activity!(activity_id)
+      now = @clock.call
+      id = @db[:entries].insert(date: date!(date), activity_id:, credited_min: credit!(credited_min), what: what!(what),
+                                notes: blank_to_nil(notes), worked_min:, created_at: now, updated_at: now)
+      { id: }
     end
 
     def numbers(actual, planned)
@@ -205,6 +234,7 @@ module TimeLog
     end
 
     def activity!(id) = @db[:activities].where(id:).first || raise(NotFound, "There's no activity #{id}.")
+    def active_activity!(id) = activity!(id).tap { raise Invalid, "That activity is archived." if it[:archived_at] }
 
     def date!(value)
       Date.iso8601(value.to_s)

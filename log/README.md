@@ -32,7 +32,7 @@ Everything is saved to `log.sqlite3` in `../log-data/`, a separate private git r
 
 **+ Log time** (on every page) records an entry: date, activity, hours in steps of 0.25, what you did, and notes.
 
-**The timer** sits in the header. Pick an activity and press **Start**. After 50 minutes of work it chimes, shows a notification (if you allow them) and counts down a 10-minute break that isn't credited. Then press **Continue** for another 50-minute block, or **Stop**. Pause works any time during a block. Stop opens the Log time dialog filled in, with the credit worked out as worked minutes × 60 ÷ 50, rounded to the nearest 15 minutes (25 minutes → 0.5 h). Add what you did and save; closing the dialog discards the time. The timer is kept by the server, so it survives reloading the page, closing the tab and restarting the server.
+**The timer** sits in the header. Pick an activity and press **Start**. After 50 minutes of work it chimes, shows a notification (if you allow them) and counts down a 10-minute break that isn't credited. Then press **Continue** for another 50-minute block, or **Stop**. Pause works any time during a block. Stop opens the Log time dialog filled in, with the credit worked out as worked minutes × 60 ÷ 50, rounded to the nearest 15 minutes (25 minutes → 0.5 h). Add what you did and save; closing the dialog discards the time. The timer is kept by the server, so it survives reloading the page, closing the tab and restarting the server. That includes a stopped timer that hasn't been logged yet: the header then offers **Log it** and **Discard**.
 
 The "LeetCode | Log" bar at the top switches to LeetCode Helper. Set `LEETCODE_URL` and `LOG_URL` if either app runs somewhere other than ports 8001 and 8002.
 
@@ -78,7 +78,7 @@ JSON throughout. Every call that changes something returns the full state for th
 |---|---|---|
 | GET | `/api/state?week=` | Returns `today`, `week` (`monday`, `editable`, `rows`, `total`, `daily_min`), `activities` and `timer` (null when none runs) |
 | GET | `/api/entries?q=&activity=` | Entries, newest first, filtered by search text and activity id |
-| POST | `/api/entries` | `date, activity_id, credited_min, what`; optional `notes`, `worked_min` |
+| POST | `/api/entries` | `date, activity_id, credited_min, what`; optional `notes`. Timer entries go through `/api/timer/log` |
 | PUT | `/api/entries/<id>` | Any of `date, activity_id, credited_min, what, notes`. `worked_min` can't change |
 | DELETE | `/api/entries/<id>` | |
 | POST | `/api/activities` | `name`; optional `hint`, `weekly_min` |
@@ -87,7 +87,9 @@ JSON throughout. Every call that changes something returns the full state for th
 | PUT | `/api/plan` | `activity_id, weekly_min`. Applies from this week on |
 | POST | `/api/timer/start` | `activity_id` |
 | POST | `/api/timer/pause`, `/resume`, `/continue` | Continue starts the next block, during or after the break |
-| POST | `/api/timer/stop` | Clears the timer and returns `date, activity_id, worked_min, credited_min` for the Log time dialog. Doesn't save an entry |
+| POST | `/api/timer/stop` | Ends the work. The timer stays, phase `stopped`, with `entry`: `date, activity_id, worked_min, credited_min` for the Log time dialog |
+| POST | `/api/timer/log` | `credited_min, what`; optional `notes`, `date`, `activity_id` (default: the timer's). Saves the entry with the timer's `worked_min` and clears the timer |
+| POST | `/api/timer/discard` | Clears a stopped timer without saving |
 | GET | `/api/apps` | Where each job-tools app runs, for the switcher |
 | GET | `/api/dev/version` | `--dev` only (404 otherwise): `version`, which changes when the code does. Open pages poll it to reload |
 

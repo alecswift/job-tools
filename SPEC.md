@@ -72,13 +72,13 @@ activities   id · name · hint? · archived_at? · created_at
 entries      id · date · activity_id · credited_min · worked_min? · what · notes? · created_at · updated_at
 plans        id · effective_from
 plan_hours   plan_id · activity_id · minutes
-timer        activity_id · started_at · block_started_at · banked_sec · paused_at? · paused_sec   (at most one row)
+timer        activity_id · started_at · block_started_at · banked_sec · paused_at? · paused_sec · stopped_at?   (at most one row)
 ```
 
-- **The timer row** stores times, never a running count: `started_at` (the entry's date), when the current work block began, the work banked from finished blocks, and pauses in the current block.
+- **The timer row** stores times, never a running count: `started_at` (the entry's date), when the current work block began, the work banked from finished blocks, pauses in the current block, and when Stop was pressed.
 - **IDs** are auto-increment integers.
 - **Time is stored as whole minutes.** `credited_min` is always a multiple of 15. Hours with decimals appear only on screen.
-- `worked_min` is the actual clock time. It's set only on entries made by the timer, and it never changes after that.
+- `worked_min` is the actual clock time. It's set only on entries made by the timer (the API takes it from the timer, never from the request), and it never changes after that.
 - **Day and Week Of are calculated, never stored.**
 - **Weeks run Monday to Sunday.** "Today" is the date in the server's `TZ`.
 - **Deletes are permanent.** There's no trash and no undo.
@@ -118,6 +118,7 @@ timer        activity_id · started_at · block_started_at · banked_sec · paus
 - After the break, choose **Continue** (another 50-minute block) or **Stop**.
 - **Pause** and **Resume** are available at any time. Paused time isn't credited.
 - **Stop** opens the Log time dialog already filled in: today's date (the date the timer started), the activity, the credit and the worked minutes. You add "What I did" and save. Closing the dialog without saving discards the time.
+- A stopped timer stays on the server until it's logged or discarded, so the time survives a reload while the dialog is open. The header then shows **Log it** (reopens the dialog) and **Discard**. A new timer can't start until then.
 - Only one timer exists at a time. It's stored in the `timer` table, so it survives page reloads, closed tabs and server restarts. Elapsed time is always calculated from `started_at` and the pauses, never by counting in the browser.
 - The timer lives in the header of every page. While it runs, the browser tab title shows the countdown.
 
@@ -167,8 +168,8 @@ JSON throughout. Like leetcode-helper, every call that changes data returns the 
 |---|---|---|
 | GET | `/api/state?week=YYYY-MM-DD` | The week's Monday (defaults to the current week). Returns activities, the week's numbers, daily totals, today, and the timer |
 | GET | `/api/entries?q=&activity=` | Entries, newest first, filtered |
-| POST | `/api/entries` | `date, activity_id, credited_min, what`; optional `notes`, `worked_min` |
-| PUT | `/api/entries/:id` | Any of the fields above except `worked_min` |
+| POST | `/api/entries` | `date, activity_id, credited_min, what`; optional `notes` |
+| PUT | `/api/entries/:id` | Any of the fields above |
 | DELETE | `/api/entries/:id` | |
 | POST | `/api/activities` | `name, weekly_min`; optional `hint` |
 | PUT | `/api/activities/:id` | `name`, `hint`, or `archived: true` |
@@ -176,7 +177,9 @@ JSON throughout. Like leetcode-helper, every call that changes data returns the 
 | PUT | `/api/plan` | `activity_id, weekly_min`. Applies from the current week |
 | POST | `/api/timer/start` | `activity_id` |
 | POST | `/api/timer/pause`, `/resume`, `/continue` | |
-| POST | `/api/timer/stop` | Returns the filled-in entry fields and clears the timer. Doesn't save an entry |
+| POST | `/api/timer/stop` | Ends the work. The timer stays, phase `stopped`, with `entry`: the filled-in fields |
+| POST | `/api/timer/log` | `credited_min, what`; optional `notes`, `date`, `activity_id` (default: the timer's). Saves the entry with the timer's `worked_min` and clears the timer |
+| POST | `/api/timer/discard` | Clears a stopped timer without saving |
 | GET | `/api/apps` | Where each app runs, for the switcher (leetcode-helper has the same route) |
 | GET | `/api/dev/version` | `--dev` only, like leetcode-helper |
 

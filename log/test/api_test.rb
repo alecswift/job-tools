@@ -56,9 +56,17 @@ class ApiTest < Minitest::Test
     _, state = call(:post, "/api/timer/start", { activity_id: lc })
     assert_equal "work", state["timer"]["phase"]
     @clock.advance(minutes: 25)
-    _, fields = call(:post, "/api/timer/stop")
-    assert_equal({ "date" => "2026-10-22", "activity_id" => lc, "worked_min" => 25, "credited_min" => 30 }, fields)
-    assert_nil call(:get, "/api/state")[1]["timer"]
+    _, state = call(:post, "/api/timer/stop")
+    assert_equal({ "date" => "2026-10-22", "activity_id" => lc, "worked_min" => 25, "credited_min" => 30 }, state["timer"]["entry"])
+    _, state = call(:post, "/api/timer/log", { credited_min: 30, what: "1 problem" })
+    assert_nil state["timer"]
+    assert_equal 30, state["week"]["total"]["actual_min"]
+
+    call(:post, "/api/timer/start", { activity_id: lc })
+    call(:post, "/api/timer/stop")
+    _, state = call(:post, "/api/timer/discard")
+    assert_nil state["timer"]
+    assert_equal 400, call(:post, "/api/entries", { date: "2026-10-22", activity_id: lc, credited_min: 60, what: "x", worked_min: 50 })[0]
   end
 
   def test_errors

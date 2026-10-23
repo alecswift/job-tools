@@ -32,18 +32,51 @@ class TimerTest < Minitest::Test
     @clock.advance(minutes: 25)
     assert_equal ["work", 2, 75 * 60], seen
 
-    fields = @log.stop_timer
-    assert_equal({ date: Date.new(2026, 10, 22), activity_id: @lc, worked_min: 75, credited_min: 90 }, fields)
+    @log.stop_timer
+    @clock.advance(minutes: 5) # time after Stop doesn't count
+    assert_equal ["stopped", 2, 75 * 60], seen
+    assert_equal({ date: Date.new(2026, 10, 22), activity_id: @lc, worked_min: 75, credited_min: 90 }, timer[:entry])
+
+    @log.log_timer(credited_min: 60, what: "2 problems", notes: "slow")
     assert_nil timer
+    entry = @log.entries.first
+    assert_equal [Date.new(2026, 10, 22), @lc, 60, 75, "2 problems"], entry.values_at(:date, :activity_id, :credited_min, :worked_min, :what)
   end
 
-  def test_it_survives_a_restart_and_keeps_the_start_date
+  def test_a_stopped_timer_survives_a_restart_and_keeps_the_start_date
     @clock.now = Time.local(2026, 10, 22, 23, 40)
     @log.start_timer(activity_id: @lc)
     @clock.advance(minutes: 55) # past midnight, on a break
+    @log.stop_timer
     restarted = TimeLog::Tracker.new(@db, clock: @clock)
-    assert_equal "break", restarted.timer[:phase]
-    assert_equal Date.new(2026, 10, 22), restarted.stop_timer[:date]
+    assert_equal "stopped", restarted.timer[:phase]
+    restarted.log_timer(credited_min: 60, what: "late night")
+    assert_equal Date.new(2026, 10, 22), restarted.entries.first[:date]
+  end
+
+  def test_the_dialog_can_change_the_date_and_activity
+    other = @log.add_activity(name: "System design")[:id]
+    @log.start_timer(activity_id: @lc)
+    @clock.advance(minutes: 50)
+    @log.stop_timer
+    @log.log_timer(date: "2026-10-21", activity_id: other, credited_min: 60, what: "x")
+    assert_equal [Date.new(2026, 10, 21), other, 50], @log.entries.first.values_at(:date, :activity_id, :worked_min)
+  end
+
+  def test_discard
+    @log.start_timer(activity_id: @lc)
+    @clock.advance(minutes: 20)
+    @log.stop_timer
+    @log.discard_timer
+    assert_nil timer
+    assert_empty @log.entries
+  end
+
+  def test_a_bad_entry_keeps_the_stopped_timer
+    @log.start_timer(activity_id: @lc)
+    @log.stop_timer
+    assert_raises(TimeLog::Invalid) { @log.log_timer(credited_min: 60, what: " ") }
+    assert_equal "stopped", timer[:phase]
   end
 
   def test_the_activity_being_timed_cant_be_archived_or_deleted
@@ -51,6 +84,8 @@ class TimerTest < Minitest::Test
     assert_raises(TimeLog::Invalid) { @log.update_activity(@lc, archived: true) }
     assert_raises(TimeLog::Invalid) { @log.delete_activity(@lc) }
     @log.stop_timer
+    assert_raises(TimeLog::Invalid) { @log.delete_activity(@lc) } # still waiting to be logged
+    @log.discard_timer
     @log.delete_activity(@lc)
   end
 
@@ -67,11 +102,18 @@ class TimerTest < Minitest::Test
 
   def test_actions_that_dont_fit
     assert_raises(TimeLog::NotFound) { @log.stop_timer }
+    assert_raises(TimeLog::NotFound) { @log.discard_timer }
     @log.start_timer(activity_id: @lc)
     assert_raises(TimeLog::Invalid) { @log.start_timer(activity_id: @lc) }
     assert_raises(TimeLog::Invalid) { @log.resume_timer }
     assert_raises(TimeLog::Invalid) { @log.continue_timer } # the block isn't over
+    assert_raises(TimeLog::Invalid) { @log.log_timer(credited_min: 60, what: "x") } # not stopped yet
+    assert_raises(TimeLog::Invalid) { @log.discard_timer }
     @clock.advance(minutes: 55)
     assert_raises(TimeLog::Invalid) { @log.pause_timer }    # on a break
+    @log.stop_timer
+    assert_raises(TimeLog::Invalid) { @log.stop_timer }
+    assert_raises(TimeLog::Invalid) { @log.continue_timer }
+    assert_raises(TimeLog::Invalid) { @log.start_timer(activity_id: @lc) } # log or discard it first
   end
 end

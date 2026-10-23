@@ -21,11 +21,16 @@ class EntriesTest < Minitest::Test
     assert_equal ["Mon", "LeetCode", 60], entry.values_at(:day, :activity, :credited_min)
   end
 
-  def test_edit_keeps_worked_minutes
-    timed = add("2026-10-22", @lc, "Timed", worked_min: 50)[:id]
-    @log.edit_entry(timed, credited_min: 45, notes: "felt slow", worked_min: 10)
-    entry = @log.entries.find { it[:id] == timed }
-    assert_equal [45, 50, "felt slow"], entry.values_at(:credited_min, :worked_min, :notes)
+  # Only the timer records worked minutes, and nothing changes them afterwards
+  def test_worked_minutes_come_from_the_timer_only
+    assert_raises(ArgumentError) { add("2026-10-22", @lc, "Timed", worked_min: 50) }
+    @log.start_timer(activity_id: @lc)
+    @log.stop_timer
+    @log.log_timer(credited_min: 60, what: "Timed")
+    timed = @log.entries.first[:id]
+    assert_raises(ArgumentError) { @log.edit_entry(timed, worked_min: 10) }
+    @log.edit_entry(timed, credited_min: 45, notes: "felt slow")
+    assert_equal [45, 0, "felt slow"], @log.entries.first.values_at(:credited_min, :worked_min, :notes)
     assert_raises(TimeLog::Invalid) { @log.edit_entry(timed, credited_min: 10) }
   end
 
