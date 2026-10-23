@@ -1,20 +1,26 @@
 services:
   retry-tracker:
-    build: .
+    build:
+      context: ..   # the repo root, so the image can include the shared design/
+      dockerfile: leetcode-helper/Dockerfile
     container_name: retry-tracker
     ports:
       - "127.0.0.1:8001:8001"   # localhost only, same as running it directly
     environment:
       TZ: America/Los_Angeles
       TRACKER_DATA: /tracker-data/data.json
+      # Where the app switcher's links go (set in .env if either app moves)
+      LEETCODE_URL: ${LEETCODE_URL:-}
+      LOG_URL: ${LOG_URL:-}
     volumes:
-      - .:/data
+      - .:/job-tools/leetcode-helper   # this app's code
+      - ../design:/job-tools/design:ro # the shared design/, and nothing else from the repo
       # Where data.json lives: this folder unless TRACKER_DATA_DIR is set (in .env, say).
       # Mount the folder, not data.json itself: saves write a temp file and rename it,
       # which fails on a single-file bind mount.
       - ${TRACKER_DATA_DIR:-.}:/tracker-data
-    # Run the code from the mounted folder in dev mode, so edits to backend/ and
-    # static/ take effect without a rebuild (the server restarts, open pages reload).
-    working_dir: /data
+    # Run the code from the mounted folder in dev mode, so edits to backend/, static/ and
+    # design/ take effect without a rebuild (the server restarts, open pages reload).
+    working_dir: /job-tools/leetcode-helper
     command: ["python3", "-m", "backend", "--dev"]
     restart: unless-stopped

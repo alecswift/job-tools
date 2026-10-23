@@ -12,7 +12,7 @@ python3 -m backend
 
 from this folder, then open http://localhost:8001.
 
-While editing the code, run `python3 -m backend --dev` instead. The server restarts itself when any `.py` file in `backend/` (subfolders included) changes, and open pages reload when that or anything in `static/` changes.
+While editing the code, run `python3 -m backend --dev` instead. The server restarts itself when any `.py` file in `backend/` (subfolders included) changes, and open pages reload when that, anything in `static/`, or the shared `../design/` changes.
 
 ### Or with Docker
 
@@ -20,7 +20,7 @@ While editing the code, run `python3 -m backend --dev` instead. The server resta
 docker compose up -d --build
 ```
 
-Same address, http://localhost:8001. The container reads and writes the same `data.json` in this folder, so you can switch between the two ways freely (just don't run both at once). It restarts on its own unless you stop it with `docker compose down`. It runs the code straight from this folder in `--dev` mode, so edits to `backend/` or `static/` take effect on save with no rebuild. Only changes to the `Dockerfile` need `up --build`. Change `TZ` in `docker-compose.yml` if you move time zones, since it decides what "today" is.
+Same address, http://localhost:8001. The container reads and writes the same `data.json` in this folder, so you can switch between the two ways freely (just don't run both at once). It restarts on its own unless you stop it with `docker compose down`. It mounts the whole job-tools repo and runs this folder's code in `--dev` mode, so edits to `backend/`, `static/` or the shared `../design/` take effect on save with no rebuild. Only changes to the `Dockerfile` need `up --build`. Change `TZ` in `docker-compose.yml` if you move time zones, since it decides what "today" is.
 
 Everything is saved to `data.json` in this folder. Back up or copy that one file to move your data. To keep it somewhere else with Docker, set `TRACKER_DATA_DIR` (in `.env`, say) to the folder that should hold `data.json`.
 
@@ -31,6 +31,8 @@ Everything is saved to `data.json` in this folder. Back up or copy that one file
 - **Log**: every problem in one table, with sortable columns, search, and pattern and status filters. Green column headers are calculated.
 - **How it works**: the formulas, filled in with your current settings, and the settings form. Edit the weights, spacing, mastery threshold, target times and pattern list, then save.
 
+The "LeetCode | Log" bar at the top switches to the [Log](../log/README.md) app. Set `LEETCODE_URL` and `LOG_URL` if either app runs somewhere other than ports 8001 and 8002.
+
 Problems are identified by their LeetCode slug (`two-sum`), the same key the plan uses, so a problem can only be logged once. Use **+ Log problem** for a new problem: paste its LeetCode link and the number, name, difficulty and a guessed pattern fill themselves in (anything you've already typed is left alone). A link pasted into the Problem box moves to the link box, and if the problem is already logged the dialog offers **Log a retry instead**. Use **Log retry** when you redo one. A retry sets the date, adds 1 to Attempts and re-scores the problem, the same as the sheet's instructions. Leaving its notes blank keeps the problem's current notes. Each attempt's scores are also kept in a `history` list in `data.json`.
 
 ## Files
@@ -39,14 +41,14 @@ Problems are identified by their LeetCode slug (`two-sum`), the same key the pla
 |---|---|
 | **`backend/`** | **The Python back end, run with `python3 -m backend`** |
 | `backend/__main__.py` | Starts the server: reads the options below (and `--dev`) and picks the data file |
-| `backend/web.py` | HTTP layer: maps each API route to a tracker call, serves `static/` |
+| `backend/web.py` | HTTP layer: maps each API route to a tracker call, serves `static/` and the shared `../design/` at `/design/` |
 | `backend/devmode.py` | `--dev` only: restarts the server when `backend/` changes and tells open pages when to reload |
 | `backend/tracker.py` | Every change to problems, plan marks and settings: add, edit, retry, delete, plan, settings. Also upgrades old `data.json` files |
 | `backend/scheduling.py` | The formulas (Time Score, Struggle, Interval, Due Date, Priority, Status) and settings validation. The only copy of them: the dialogs' preview asks the server |
 | `backend/storage.py` | Saving: the JSON file, plus an in-memory version for tests |
 | `backend/leetcode.py` | Looks up a problem's number, title, difficulty and tags on LeetCode (public, no sign-in), for the Log dialog |
 | **`static/`** | **The front end** |
-| `static/index.html`, `style.css` | The page shell and styles |
+| `static/index.html`, `style.css` | The page shell and LeetCode Helper's own styles (shared tokens and components come from `../design/`) |
 | `static/main.js` | Picks the page from the URL, handles clicks and form input |
 | `static/views.js`, `dialogs.js` | The four pages, and the Log / Edit / Retry dialogs |
 | `static/autofill.js` | Turns a LeetCode lookup into Log dialog fields, picking the Pattern from the plan or LeetCode's tags |
@@ -55,7 +57,7 @@ Problems are identified by their LeetCode slug (`two-sum`), the same key the pla
 | **Everything else** | |
 | `tests/` | Tests for the formulas, the tracker, the LeetCode lookup and the HTTP layer |
 | `data.json` | Your data |
-| `Dockerfile`, `docker-compose.yml` | Container setup (data stays in this folder through a mount) |
+| `Dockerfile`, `docker-compose.yml` | Container setup, built from the repo root so it can include `../design/` (data stays in this folder through a mount) |
 
 ## Tests
 
@@ -81,6 +83,7 @@ Every call returns the full state (same as `GET /api/state`) except `/api/previe
 | PUT | `/api/settings` | Any setting, or `patterns` as a list |
 | POST | `/api/settings/reset` | Restores the default numbers and keeps your patterns |
 | PUT | `/api/plan` | `quiz`: list of problem slugs done by Quiz. Replaces the saved list. Solved plan problems are the logged ones, so aren't sent |
+| GET | `/api/apps` | Where each job-tools app runs (`LEETCODE_URL`, `LOG_URL`), for the app switcher |
 | GET | `/api/dev/version` | `--dev` only (404 otherwise): `version`, which changes when the code does. Open pages poll it to reload |
 
 Options: `PORT=9000 python3 -m backend` changes the port, `HOST` changes the bind address, and `TRACKER_DATA=/path/file.json` changes where data is stored. `HOST` defaults to `127.0.0.1`, so the server is only reachable from this machine unless you change it. The Docker image binds to `0.0.0.0` inside the container, but `docker-compose.yml` publishes the port on `127.0.0.1` only, so it's localhost-only too.

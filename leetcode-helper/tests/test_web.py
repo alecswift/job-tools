@@ -92,6 +92,20 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(self.call("GET", "/../backend/web.py")[0], 404)
         self.assertEqual(self.call("GET", "/some/page")[0], 200)  # unknown pages get the app
 
+    def test_shared_design_files(self):
+        status, body, ctype = self.call("GET", "/design/tokens.css")
+        self.assertEqual((status, ctype), (200, "text/css"))
+        self.assertIn(b"--accent", body)
+        self.assertEqual(self.call("GET", "/design/ui.js")[2], "text/javascript")
+        self.assertEqual(self.call("GET", "/design/missing.css")[0], 404)
+        self.assertEqual(self.call("GET", "/design/../leetcode-helper/backend/web.py")[0], 404)
+
+    def test_app_addresses(self):
+        with mock.patch.dict("os.environ", {"LEETCODE_URL": "", "LOG_URL": ""}):
+            self.assertEqual(self.json("GET", "/api/apps"), (200, {}))  # design/ui.js fills in the defaults
+        with mock.patch.dict("os.environ", {"LEETCODE_URL": "", "LOG_URL": "http://example.test:9002"}):
+            self.assertEqual(self.json("GET", "/api/apps")[1], {"log": "http://example.test:9002"})
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,15 @@
+source "https://rubygems.org"
+
+ruby file: ".ruby-version"
+
+gem "sinatra", "~> 4.2"
+gem "puma", "~> 8.0"
+gem "rackup", "~> 2.3"
+gem "sequel", "~> 5.109"
+gem "sqlite3", "~> 2.10"
+gem "rake", "~> 13.4"
+
+group :test do
+  gem "minitest", "~> 6.0"
+  gem "rack-test", "~> 2.3"
+end

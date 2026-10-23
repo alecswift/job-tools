@@ -1,3 +1,4 @@
-# Separate private repo holding the LeetCode tracker data (see leetcode/.env)
+# Separate private repos holding each app's data (see leetcode-helper/.env and log/.env)
 leetcode-data/
+log-data/
 .DS_Store

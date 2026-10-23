@@ -1,0 +1,16 @@
+/* Shared design tokens for every job-tools app: colours (light and dark), fonts.
+   Apps add their own tokens on top in their own stylesheet, never here. */
+:root {
+  --bg: #f3f4f1; --surface: #ffffff; --sunk: #eaece8; --fg: #1b2420; --muted: #5f6b65; --line: #dde1dc;
+  --accent: #0f6b5c; --accent-soft: #dcefe9;
+  --bad: #c2413a; --bad-soft: #f8e3e1; --good: #1f8a5b; --good-soft: #dff1e7;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #121715; --surface: #1a211e; --sunk: #161c19; --fg: #e4ebe7; --muted: #95a39c; --line: #2a3430;
+  --accent: #5cc4ae; --accent-soft: #1d3a33;
+  --bad: #ec7067; --bad-soft: #3a2220; --good: #4cc48c; --good-soft: #1b3326;
+  color-scheme: dark; } }

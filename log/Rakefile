@@ -1,0 +1,27 @@
+require "rake/testtask"
+
+Rake::TestTask.new(:test) do |t|
+  t.libs << "test"
+  t.test_files = FileList["test/*_test.rb"]
+end
+task default: :test
+
+namespace :db do
+  desc "Create the database or bring it up to date (bin/server also does this on start)"
+  task :migrate do
+    require_relative "lib/time_log"
+    TimeLog::Database.file(TimeLog.data_file)
+    puts "Up to date: #{TimeLog.data_file}"
+  end
+end
+
+desc "Write a readable JSON copy of every table next to the database, for diffs in git"
+task :export do
+  require "json"
+  require_relative "lib/time_log"
+  db = TimeLog::Database.file(TimeLog.data_file)
+  out = TimeLog.data_file.sub(/\.sqlite3\z/, "") + ".json"
+  tables = %i[activities entries plans plan_hours timer].to_h { [it, db[it].all] }
+  File.write(out, JSON.pretty_generate(tables) + "\n")
+  puts "Wrote #{out}"
+end

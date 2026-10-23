@@ -1,4 +1,4 @@
-"""Dev mode (python3 -m backend --dev): restart when backend/ changes, reload open pages when backend/ or static/ changes.
+"""Dev mode (python3 -m backend --dev): restart when backend/ changes, reload open pages when backend/, static/ or ../design/ changes.
 
 The page asks GET /api/dev/version (served by web.py in dev mode only) and reloads when the answer changes.
 """
@@ -6,7 +6,7 @@ import os
 import sys
 import time
 
-from .web import APP_DIR, STATIC_DIR
+from .web import APP_DIR, DESIGN_DIR, STATIC_DIR
 
 BACKEND_DIR = os.path.join(APP_DIR, "backend")
 
@@ -16,8 +16,8 @@ def _files(folder, ext=""):
 
 
 def code_version():
-    """Newest mtime across backend/ and static/. The page reloads when this changes."""
-    return max(os.path.getmtime(f) for f in _files(BACKEND_DIR, ".py") + _files(STATIC_DIR) if os.path.isfile(f))
+    """Newest mtime across backend/, static/ and ../design/. The page reloads when this changes."""
+    return max(os.path.getmtime(f) for f in _files(BACKEND_DIR, ".py") + _files(STATIC_DIR) + _files(DESIGN_DIR) if os.path.isfile(f))
 
 
 def restart_on_change():

@@ -1,4 +1,4 @@
-"""The HTTP layer: turns requests into Tracker calls and serves static/.
+"""The HTTP layer: turns requests into Tracker calls, serves static/ and the shared ../design/ at /design/.
 
 Started by __main__.py (python3 -m backend). In dev mode it also answers GET /api/dev/version,
 so open pages know when to reload (see devmode.py).
@@ -14,6 +14,14 @@ from .tracker import SLUG, NotFound, to_slug
 
 APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STATIC_DIR = os.path.join(APP_DIR, "static")
+DESIGN_DIR = os.path.join(os.path.dirname(APP_DIR), "design")
+
+
+def apps(query):
+    """GET /api/apps: where each job-tools app runs, for the app switcher. Only the ones set in
+    LEETCODE_URL / LOG_URL: design/ui.js has the defaults."""
+    urls = {"leetcode": os.environ.get("LEETCODE_URL"), "log": os.environ.get("LOG_URL")}
+    return {app: url for app, url in urls.items() if url}
 
 
 def lookup(query):
@@ -31,6 +39,7 @@ PROBLEM = r"/api/problems/(" + SLUG + ")"
 ROUTES = [
     ("GET", r"/api/state", lambda tracker, body: tracker.view()),
     ("GET", r"/api/lookup", lambda tracker, query: lookup(query)),
+    ("GET", r"/api/apps", lambda tracker, query: apps(query)),
     ("POST", r"/api/preview", lambda tracker, body: tracker.preview(body)),
     ("POST", r"/api/problems", lambda tracker, body: tracker.add(body)),
     ("PUT", PROBLEM, lambda tracker, body, slug: tracker.edit(slug, body)),
@@ -92,9 +101,12 @@ class Handler(BaseHTTPRequestHandler):
     def serve_static(self, path):
         if path in ("", "/"):
             path = "/index.html"
-        full = os.path.normpath(os.path.join(STATIC_DIR, path.lstrip("/")))
-        if not full.startswith(STATIC_DIR + os.sep) or not os.path.isfile(full):
-            if os.path.splitext(path)[1]:
+        root = STATIC_DIR
+        if path.startswith("/design/"):
+            root, path = DESIGN_DIR, path[len("/design"):]
+        full = os.path.normpath(os.path.join(root, path.lstrip("/")))
+        if not full.startswith(root + os.sep) or not os.path.isfile(full):
+            if os.path.splitext(path)[1] or root == DESIGN_DIR:
                 return self.send_body(b"Not found", "text/plain", 404)
             full = os.path.join(STATIC_DIR, "index.html")
         with open(full, "rb") as f:

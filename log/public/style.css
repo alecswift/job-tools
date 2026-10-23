@@ -1,0 +1,39 @@
+/* The Log's own styles. Shared tokens and components come first from /design/ (see index.html).
+   Layout: one centered column; sticky header with the timer; two pages (Week, Log); dialogs for entries and activities. */
+
+/* header timer */
+.timer { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; }
+.timer select { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 8px; max-width: 180px; }
+.timer .clock { font: 600 15px var(--mono); font-variant-numeric: tabular-nums; }
+.timer .what { color: var(--muted); }
+.timer.on { background: var(--accent-soft); border-radius: 10px; padding: 4px 4px 4px 12px; }
+.timer.rest { background: var(--good-soft); }
+
+/* week page */
+.weeknav { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.weeknav h1 { font-size: clamp(24px, 4vw, 32px); margin-right: auto; }
+.weeknav .btn { min-width: 40px; }
+td.act b { font-weight: 600; }
+td.act small { display: block; font-size: 12px; color: var(--muted); white-space: normal; }
+td.act .arch { font-size: 12px; color: var(--muted); margin-left: 6px; }
+tr.total td { font-weight: 600; background: var(--sunk); }
+td input.plan { width: 72px; border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 4px 6px; font-family: var(--mono); text-align: right; }
+.days { font: 400 14px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; display: flex; flex-wrap: wrap; gap: 4px 0; }
+.days span + span::before { content: "·"; margin: 0 8px; }
+.days b { color: var(--fg); font-weight: 600; }
+.days .today { color: var(--accent); }
+.rule { font-size: 14px; color: var(--muted); margin: 0; }
+
+/* the ⋯ menu on each activity row */
+.menu { position: relative; }
+.menu summary { list-style: none; cursor: pointer; padding: 2px 8px; border-radius: 6px; color: var(--muted); font-weight: 600; }
+.menu summary::-webkit-details-marker { display: none; }
+.menu summary:hover { background: var(--sunk); color: var(--fg); }
+.menu[open] > div { position: absolute; right: 0; top: 100%; z-index: 3; display: grid; min-width: 150px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 4px; box-shadow: 0 6px 20px rgb(0 0 0 / .12); }
+.menu button { background: none; border: 0; text-align: left; padding: 6px 10px; border-radius: 5px; cursor: pointer; }
+.menu button:hover { background: var(--sunk); }
+.menu button.danger { color: var(--bad); }
+
+/* log page */
+td.wrap { white-space: normal; min-width: 180px; }
+td.acts { display: flex; gap: 6px; justify-content: flex-end; }
