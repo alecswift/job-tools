@@ -8,6 +8,8 @@ module TimeLog
     DESIGN_DIR = File.expand_path("../../../design", __dir__)
 
     set :public_folder, File.expand_path("../../public", __dir__)
+    # Browsers must check with the server before reusing a page file, so an edited file shows up on the next load
+    set :static_cache_control, [:no_cache]
     set :show_exceptions, false
     set :raise_errors, false
     # Only answer to this machine's names, so other web pages can't reach the API through DNS tricks
@@ -21,11 +23,12 @@ module TimeLog
 
     before("/api/*") { content_type :json }
 
-    get("/") { send_file File.join(settings.public_folder, "index.html") }
+    get("/") { cache_control :no_cache; send_file File.join(settings.public_folder, "index.html") }
 
     get "/design/*" do
       path = File.expand_path(params["splat"].first, DESIGN_DIR)
       pass unless path.start_with?(DESIGN_DIR + "/") && File.file?(path)
+      cache_control :no_cache
       send_file path
     end
 

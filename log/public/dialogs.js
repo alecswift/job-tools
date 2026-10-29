@@ -20,7 +20,7 @@ function open(html, onSubmit, onDismiss) {
 }
 
 const buttons = label => `<div class="err" id="dlgErr"></div>
-  <div class="row spread"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary">${label}</button></div>`;
+  <div class="row" style="justify-content:flex-end"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn primary">${label}</button></div>`;
 
 // entry: an entry from the Log to edit, or null for a new one
 export function openEntry(entry) {

@@ -31,7 +31,7 @@ Everything is saved to `data.json` in this folder. Back up or copy that one file
 - **Log**: every problem in one table, with sortable columns, search, and pattern and status filters. Green column headers are calculated.
 - **How it works**: the formulas, filled in with your current settings, and the settings form. Edit the weights, spacing, mastery threshold, target times and pattern list, then save.
 
-The "LeetCode | Log" bar at the top switches to the [Log](../log/README.md) app. Set `LEETCODE_URL` and `LOG_URL` if either app runs somewhere other than ports 8001 and 8002.
+The **Apps** links under the page nav switch to the [Log](../log/README.md) app. Set `LEETCODE_URL` and `LOG_URL` if either app runs somewhere other than ports 8001 and 8002.
 
 Problems are identified by their LeetCode slug (`two-sum`), the same key the plan uses, so a problem can only be logged once. Use **+ Log problem** for a new problem: paste its LeetCode link and the number, name, difficulty and a guessed pattern fill themselves in (anything you've already typed is left alone). A link pasted into the Problem box moves to the link box, and if the problem is already logged the dialog offers **Log a retry instead**. Use **Log retry** when you redo one. A retry sets the date, adds 1 to Attempts and re-scores the problem, the same as the sheet's instructions. Leaving its notes blank keeps the problem's current notes. Each attempt's scores are also kept in a `history` list in `data.json`.
 

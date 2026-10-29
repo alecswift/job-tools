@@ -14,9 +14,9 @@ export function renderTimer(current) {
     const active = current.activities.filter(a => !a.archived);
     if (!active.some(a => String(a.id) === picked)) picked = active[0] ? String(active[0].id) : "";
     el.className = "timer";
-    el.innerHTML = active.length ? `<select id="timerActivity" aria-label="Activity to time">${active.map(a =>
+    el.innerHTML = active.length ? `<span class="muted">Timer</span><select id="timerActivity" aria-label="Activity to time">${active.map(a =>
       `<option value="${a.id}"${String(a.id) === picked ? " selected" : ""}>${esc(a.name)}</option>`).join("")}</select>
-      <button class="btn" data-timer="start">▶ Start</button>` : "";
+      <button class="btn small" data-timer="start">▶ Start</button>` : "";
     document.title = "Log";
     return;
   }
@@ -30,7 +30,7 @@ export function renderTimer(current) {
     stopped: `<button class="btn small" data-timer="log">Log it</button><button class="btn small" data-timer="discard">Discard</button>`,
   }[snap.phase];
   el.className = `timer on${snap.phase === "work" || snap.phase === "paused" ? "" : " rest"}`;
-  el.innerHTML = `<span class="what">${esc(snap.activity)} · block ${snap.block}</span><span class="clock" id="timerClock"></span>
+  el.innerHTML = `<span class="clock" id="timerClock"></span><span class="what">${esc(snap.activity)} · block ${snap.block}</span>
     ${controls}`;
   tick();
 }

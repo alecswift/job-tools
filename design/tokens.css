@@ -1,16 +1,17 @@
 /* Shared design tokens for every job-tools app: colours (light and dark), fonts.
+   The look is copied from training-log: muted green-grey neutrals, a blue accent, condensed display headings.
    Apps add their own tokens on top in their own stylesheet, never here. */
 :root {
-  --bg: #f3f4f1; --surface: #ffffff; --sunk: #eaece8; --fg: #1b2420; --muted: #5f6b65; --line: #dde1dc;
-  --accent: #0f6b5c; --accent-soft: #dcefe9;
-  --bad: #c2413a; --bad-soft: #f8e3e1; --good: #1f8a5b; --good-soft: #dff1e7;
-  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
-  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
-  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --bg: #f3f5f4; --surface: #ffffff; --sunk: #e7ecea; --fg: #1d2723; --muted: #5b6862; --line: #d5ddd9;
+  --accent: #2f6f8f; --accent-soft: #dce9ef;
+  --bad: #b4453a; --bad-soft: #f5e1de; --good: #2e8a5c; --good-soft: #dcefe4;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "Source Sans 3", system-ui, sans-serif;
+  --mono: ui-monospace, Menlo, Consolas, monospace; /* formulas only */
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) { :root {
-  --bg: #121715; --surface: #1a211e; --sunk: #161c19; --fg: #e4ebe7; --muted: #95a39c; --line: #2a3430;
-  --accent: #5cc4ae; --accent-soft: #1d3a33;
-  --bad: #ec7067; --bad-soft: #3a2220; --good: #4cc48c; --good-soft: #1b3326;
+  --bg: #141a18; --surface: #1b2320; --sunk: #26302c; --fg: #e4ebe7; --muted: #9aa8a1; --line: #2c3733;
+  --accent: #5aa3c7; --accent-soft: #1f3541;
+  --bad: #e07a6e; --bad-soft: #3a2421; --good: #5cc28d; --good-soft: #1d3428;
   color-scheme: dark; } }

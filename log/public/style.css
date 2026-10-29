@@ -1,24 +1,28 @@
 /* The Log's own styles. Shared tokens and components come first from /design/ (see index.html).
-   Layout: one centered column; sticky header with the timer; two pages (Week, Log); dialogs for entries and activities. */
+   Layout: the shared shell (brand, header with the timer and + Log time, side nav: Week / Log); dialogs for entries and activities. */
 
-/* header timer */
-.timer { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; }
-.timer select { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 8px; max-width: 180px; }
-.timer .clock { font: 600 15px var(--mono); font-variant-numeric: tabular-nums; }
+/* header timer: status text beside the date, set off by a divider; a dot shows it's running (accent) or resting (green) */
+.timer { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: .9rem; padding-left: 16px; border-left: 1px solid var(--line); }
+.timer:empty { display: none; }
+.timer select { border: 0; background: none; padding: 4px 2px; font-weight: 600; max-width: 200px; cursor: pointer; }
+.timer .clock { font-weight: 600; }
 .timer .what { color: var(--muted); }
-.timer.on { background: var(--accent-soft); border-radius: 10px; padding: 4px 4px 4px 12px; }
-.timer.rest { background: var(--good-soft); }
+.timer.on::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.timer.rest::before { background: var(--good); }
+/* less room: drop the "Timer" label, then on phones the date, so the timer keeps one line */
+@media (max-width: 900px) { .timer > .muted { display: none; } .timer select { max-width: 150px; } }
+@media (max-width: 600px) { .top .today { display: none; } .timer { border-left: 0; padding-left: 0; } }
 
 /* week page */
 .weeknav { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
-.weeknav h1 { font-size: clamp(24px, 4vw, 32px); margin-right: auto; }
+.weeknav h1 { font-size: 1.8rem; margin-right: auto; }
 .weeknav .btn { min-width: 40px; }
 td.act b { font-weight: 600; }
 td.act small { display: block; font-size: 12px; color: var(--muted); white-space: normal; }
 td.act .arch { font-size: 12px; color: var(--muted); margin-left: 6px; }
-tr.total td { font-weight: 600; background: var(--sunk); }
-td input.plan { width: 72px; border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 4px 6px; font-family: var(--mono); text-align: right; }
-.days { font: 400 14px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; display: flex; flex-wrap: wrap; gap: 4px 0; }
+tr.total td { font-weight: 600; border-top: 2px solid var(--line); }
+td input.plan { width: 72px; border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 4px 6px; text-align: right; }
+.days { font: 400 14px var(--body); color: var(--muted); font-variant-numeric: tabular-nums; display: flex; flex-wrap: wrap; gap: 4px 0; }
 .days span + span::before { content: "·"; margin: 0 8px; }
 .days b { color: var(--fg); font-weight: 600; }
 .days .today { color: var(--accent); }
@@ -36,4 +40,5 @@ td input.plan { width: 72px; border: 1px solid var(--line); background: var(--bg
 
 /* log page */
 td.wrap { white-space: normal; min-width: 180px; }
-td.acts { display: flex; gap: 6px; justify-content: flex-end; }
+td.acts { text-align: right; }
+td.acts .btn + .btn { margin-left: 6px; }

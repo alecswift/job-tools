@@ -1,75 +1,109 @@
-/* Shared components for every job-tools app, built on tokens.css: page shell, sticky header,
-   app switcher, buttons, tables, toolbar, dialogs, form fields, toast. Load after tokens.css,
-   before the app's own stylesheet. */
+/* Shared components for every job-tools app, built on tokens.css: app shell, side nav, app switcher,
+   buttons, tables, toolbar, dialogs, form fields, toast. Load after tokens.css, before the app's own stylesheet.
+   Layout (copied from training-log): brand in the corner, header bar across the top, page nav down the left,
+   content beside it. */
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 var(--body); }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.45 var(--body); font-variant-numeric: tabular-nums; }
 a { color: inherit; }
 button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* header */
-.top { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
-.top-in { max-width: 1040px; margin: 0 auto; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; }
-.brand { font: 800 20px var(--display); letter-spacing: -0.01em; margin-right: auto; }
-.brand small { font: 400 13px var(--mono); color: var(--muted); margin-left: 8px; }
-nav { display: flex; gap: 4px; }
-nav a { text-decoration: none; padding: 6px 12px; border-radius: 6px; color: var(--muted); font-weight: 600; }
-nav a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); }
+/* app shell: the brand cell is where the header row and nav column cross */
+.app {
+  --toph: 56px; --sidew: 220px;
+  display: grid; grid-template-columns: var(--sidew) minmax(0, 1fr); grid-template-rows: var(--toph) 1fr;
+  grid-template-areas: "brand top" "side main";
+  min-height: 100vh;
+  /* nav column background and divider, down the full page whatever the nav's height */
+  background: linear-gradient(to right, var(--surface) calc(var(--sidew) - 1px), var(--line) 0 var(--sidew), transparent 0);
+}
+.brand, .top { position: sticky; top: 0; z-index: 5; height: var(--toph); display: flex; align-items: center; background: var(--surface); border-bottom: 1px solid var(--line); }
+.brand { grid-area: brand; padding: 0 16px; border-right: 1px solid var(--line); font: 700 1.6rem/1 var(--display); white-space: nowrap; }
+.top { grid-area: top; padding: 0 24px; min-width: 0; gap: 8px 16px; }
+.top .today { font-size: .9rem; color: var(--muted); white-space: nowrap; }
+.top > .btn.primary { margin-left: auto; padding: 6px 14px; } /* the app's main action, alone on the right */
 
-/* app switcher (ui.js appSwitcher): sits above the header row */
-.apps { background: var(--sunk); border-bottom: 1px solid var(--line); }
-.apps-in { max-width: 1040px; margin: 0 auto; padding: 4px 16px; display: flex; gap: 2px; font-size: 13px; }
-.apps a { text-decoration: none; padding: 2px 10px; border-radius: 5px; color: var(--muted); font-weight: 600; }
-.apps a:hover { color: var(--fg); }
-.apps a[aria-current="page"] { color: var(--accent); background: var(--surface); }
+/* side column: the page nav, then the app switcher (ui.js appSwitcher) under it */
+.side { grid-area: side; position: sticky; top: var(--toph); align-self: start; max-height: calc(100vh - var(--toph)); overflow-y: auto; padding: 16px 10px 24px; display: grid; gap: 20px; }
+.side nav, .apps { display: grid; gap: 2px; }
+.side a { display: block; text-decoration: none; padding: 9px 12px; border-radius: 6px; font-size: 1rem; font-weight: 600; }
+.side a:hover, .side a[aria-current="page"] { background: var(--sunk); }
+.side a[aria-current="page"] { color: var(--accent); }
+.side a:focus-visible { outline-offset: -2px; }
+.apps { border-top: 1px solid var(--line); padding-top: 12px; }
+.apps::before { content: "Apps"; font-size: .85rem; color: var(--muted); padding: 0 12px 4px; }
+.apps a { padding: 6px 12px; font-size: .9rem; font-weight: 400; color: var(--muted); }
+.apps a[aria-current="page"] { color: var(--accent); font-weight: 600; }
 
-main { max-width: 1040px; margin: 0 auto; padding: 28px 16px 80px; display: grid; gap: 28px; }
-h1 { font: 800 clamp(28px, 5vw, 40px)/1.1 var(--display); letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
-h2 { font: 600 20px var(--display); margin: 0; }
-h3 { font: 600 16px var(--display); margin: 0; }
-.label { font: 600 12px var(--body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+main { grid-area: main; width: 100%; max-width: 1080px; margin: 0 auto; padding: 24px 24px 48px; display: grid; gap: 26px; align-content: start; }
+
+/* mid widths: a slimmer nav column so the page keeps its room */
+@media (max-width: 900px) { .app { --sidew: 170px; } .top { padding: 0 16px; } main { padding: 20px 16px 48px; } }
+
+/* phones: brand and header share the top row, nav becomes a row of links under it */
+@media (max-width: 600px) {
+  .app { grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto 1fr; grid-template-areas: "brand top" "side side" "main main"; background: none; }
+  .brand, .top { position: static; height: auto; min-height: var(--toph); }
+  .brand { border-right: 0; font-size: 1.4rem; }
+  .top { padding: 8px 16px 8px 0; flex-wrap: wrap; justify-content: flex-end; }
+  .side { position: sticky; top: 0; z-index: 5; max-height: none; min-width: 0; overflow-x: auto; padding: 6px 16px; display: flex; gap: 4px 12px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .side nav { display: flex; gap: 4px; flex: 1 1 auto; }
+  .side nav a { flex: 1; text-align: center; white-space: nowrap; }
+  .apps a { white-space: nowrap; }
+  main { min-width: 0; padding: 20px 16px 48px; }
+  .apps { display: flex; border-top: 0; padding-top: 0; align-items: center; }
+  .apps::before { display: none; }
+}
+
+h1, h2 { font-family: var(--display); font-weight: 700; line-height: 1; margin: 0; }
+h1 { font-size: 2.2rem; text-wrap: balance; }
+h2 { font-size: 1.4rem; }
+h3 { font-size: .95rem; font-weight: 600; margin: 0; }
+.label { font-size: .85rem; color: var(--muted); }
 .muted { color: var(--muted); }
-.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.mono { font-variant-numeric: tabular-nums; } /* numbers: body font, even figures (no monospace, like training-log) */
 
-.btn { border: 1px solid var(--line); background: var(--surface); padding: 7px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; white-space: nowrap; }
-.btn:hover { border-color: var(--accent); }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+button { font-weight: 600; border-radius: 6px; cursor: pointer; }
+.btn { border: 1px solid var(--line); background: none; padding: 6px 12px; border-radius: 6px; white-space: nowrap; }
+.btn:hover { background: var(--sunk); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); padding: 8px 16px; }
+.btn.primary:hover { background: var(--accent); }
+.btn:disabled { opacity: .5; cursor: default; }
 .btn.danger { color: var(--bad); }
-.btn.small { padding: 4px 10px; font-size: 14px; }
+.btn.small { padding: 5px 10px; font-size: .85rem; }
 .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 .spread { justify-content: space-between; }
-.empty { padding: 20px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; }
+.empty { padding: 16px; color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
 
-/* tables */
-.toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.toolbar input, .toolbar select { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 7px 10px; min-width: 0; }
+/* tables: a table sits on a panel */
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.toolbar input, .toolbar select { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 8px 10px; min-width: 0; }
 .toolbar input { flex: 1 1 200px; }
-.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
-table { border-collapse: collapse; width: 100%; font-size: 14px; }
-th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
-th { font: 600 11px var(--body); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); background: var(--sunk); }
-td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
-th.num { text-align: right; }
-tbody tr:hover { background: var(--sunk); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 6px 16px; }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+th, td { padding: 7px 8px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: baseline; }
+th { font-weight: 600; color: var(--muted); }
+td.num, th.num { text-align: right; }
 tbody tr:last-child td { border-bottom: 0; }
 td a { text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
 .pos { color: var(--good); }
 .neg { color: var(--bad); }
 
-textarea { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 8px; width: 100%; resize: vertical; }
+textarea { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 8px 10px; width: 100%; resize: vertical; }
 
 /* dialog */
-dialog { border: 1px solid var(--line); border-radius: 14px; padding: 0; background: var(--surface); color: var(--fg); width: min(560px, calc(100vw - 24px)); }
+dialog { border: 1px solid var(--line); border-radius: 8px; padding: 0; background: var(--surface); color: var(--fg); width: min(560px, calc(100vw - 24px)); }
 dialog::backdrop { background: rgb(0 0 0 / .35); }
-dialog form { padding: 22px; display: grid; gap: 14px; }
+dialog form { padding: 20px; display: grid; gap: 12px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 480px) { .grid2 { grid-template-columns: 1fr; } }
 .f { display: grid; gap: 4px; min-width: 0; }
-.f > span { font-weight: 600; font-size: 14px; }
-.f input:not([type=range]), .f select { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 7px 9px; width: 100%; }
-.hint { font-size: 13px; color: var(--muted); }
-.err { color: var(--bad); font-size: 14px; min-height: 1em; }
+.f > span { font-size: .85rem; color: var(--muted); }
+.f input:not([type=range]), .f select { border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 8px 10px; width: 100%; min-width: 0; }
+.hint { font-size: .85rem; color: var(--muted); }
+.err { color: var(--bad); font-size: .85rem; min-height: 1em; }
 
-.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 8px 16px; border-radius: 8px; font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 8px 16px; border-radius: 6px; font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none; }
 .toast.show { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }

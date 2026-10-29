@@ -5,24 +5,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LeetCode Helper</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700&family=Source+Sans+3:wght@400;600&display=swap">
 <link rel="stylesheet" href="/design/tokens.css">
 <link rel="stylesheet" href="/design/components.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header class="top"><div class="top-in">
-  <div class="brand">LeetCode Helper<small id="today"></small></div>
-  <nav>
+<div class="app">
+<div class="brand">LeetCode Helper</div>
+
+<header class="top">
+  <span class="today" id="today"></span>
+  <button class="btn primary" id="addBtn">+ Log problem</button>
+</header>
+
+<div class="side">
+  <nav aria-label="Pages">
     <a href="#plan" data-view="plan">Plan</a>
     <a href="#retryqueue" data-view="retryqueue">Retry queue</a>
     <a href="#log" data-view="log">Log</a>
     <a href="#how" data-view="how">How it works</a>
   </nav>
-  <button class="btn primary" id="addBtn">+ Log problem</button>
-</div></header>
+</div>
 
 <main id="view"></main>
+</div>
 
 <dialog id="dlg"><form method="dialog" id="dlgForm" novalidate></form></dialog>
 <div class="toast" id="toast" role="status"></div>

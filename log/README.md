@@ -34,7 +34,7 @@ Everything is saved to `log.sqlite3` in `../log-data/`, a separate private git r
 
 **The timer** sits in the header. Pick an activity and press **Start**. After 50 minutes of work it chimes, shows a notification (if you allow them) and counts down a 10-minute break that isn't credited. Then press **Continue** for another 50-minute block, or **Stop**. Pause works any time during a block. Stop opens the Log time dialog filled in, with the credit worked out as worked minutes × 60 ÷ 50, rounded to the nearest 15 minutes (25 minutes → 0.5 h). Add what you did and save; closing the dialog discards the time. The timer is kept by the server, so it survives reloading the page, closing the tab and restarting the server. That includes a stopped timer that hasn't been logged yet: the header then offers **Log it** and **Discard**.
 
-The "LeetCode | Log" bar at the top switches to LeetCode Helper. Set `LEETCODE_URL` and `LOG_URL` if either app runs somewhere other than ports 8001 and 8002.
+The **Apps** links under the page nav switch to LeetCode Helper. Set `LEETCODE_URL` and `LOG_URL` if either app runs somewhere other than ports 8001 and 8002.
 
 ## Files
 

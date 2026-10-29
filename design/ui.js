@@ -7,14 +7,16 @@ const APP_NAMES = { leetcode: "LeetCode", log: "Log" };
 export const $ = s => document.querySelector(s);
 export const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-// The "LeetCode | Log" links above the header. current is this app's key. Only links: the apps stay separate.
+// The "LeetCode | Log" links in the side column, under the page nav. current is this app's key. Only links: the apps stay separate.
 // Drawn straight away with the defaults so the page doesn't jump, then pointed at the server's addresses.
 export async function appSwitcher(current) {
   const bar = document.createElement("div");
   bar.className = "apps";
-  bar.innerHTML = `<div class="apps-in">${Object.entries(APP_NAMES).map(([key, name]) =>
-    `<a data-app="${key}" href="${key === current ? "/" : esc(DEFAULT_APPS[key])}"${key === current ? ' aria-current="page"' : ""}>${name}</a>`).join("")}</div>`;
-  document.body.prepend(bar);
+  bar.setAttribute("role", "navigation"); // not a <nav>: the apps' "nav a" selectors are for their own pages
+  bar.setAttribute("aria-label", "Apps");
+  bar.innerHTML = Object.entries(APP_NAMES).map(([key, name]) =>
+    `<a data-app="${key}" href="${key === current ? "/" : esc(DEFAULT_APPS[key])}"${key === current ? ' aria-current="page"' : ""}>${name}</a>`).join("");
+  document.querySelector(".side").append(bar);
   try {
     const res = await fetch("/api/apps");
     if (!res.ok) return;

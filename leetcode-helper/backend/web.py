@@ -60,10 +60,12 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         pass
 
-    def send_body(self, body, ctype, status=200):
+    def send_body(self, body, ctype, status=200, headers=()):
         self.send_response(status)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
+        for name, value in headers:
+            self.send_header(name, value)
         self.end_headers()
         self.wfile.write(body)
 
@@ -111,7 +113,8 @@ class Handler(BaseHTTPRequestHandler):
             full = os.path.join(STATIC_DIR, "index.html")
         with open(full, "rb") as f:
             body = f.read()
-        self.send_body(body, CONTENT_TYPES.get(os.path.splitext(full)[1], "application/octet-stream"))
+        # Browsers must check with the server before reusing a page file, so an edited file shows up on the next load
+        self.send_body(body, CONTENT_TYPES.get(os.path.splitext(full)[1], "application/octet-stream"), headers=[("Cache-Control", "no-cache")])
 
     def do_GET(self): self.route("GET")
     def do_POST(self): self.route("POST")

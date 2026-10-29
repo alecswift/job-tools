@@ -33,13 +33,15 @@ Rules:
 
 | File | What it is |
 |---|---|
-| `tokens.css` | CSS custom properties: colours (light and dark), type scale, spacing, radii |
-| `components.css` | Shared components built on the tokens: header, nav, buttons, tables, dialogs, form fields, red/green value colours |
+| `tokens.css` | CSS custom properties: colours (light and dark), type scale, spacing, radii. The look is copied from training-log |
+| `components.css` | Shared components built on the tokens: the app shell, buttons, tables, dialogs, form fields, red/green value colours |
 | `ui.js` | Shared front-end helpers, including the app switcher |
 
 **Token refactor of leetcode-helper.** Move leetcode-helper's hard-coded values in `static/style.css` into `tokens.css`, and move its generic components into `components.css`. Anything that belongs only to leetcode-helper stays in its own `style.css`. Success test: the pages look the same before and after.
 
-**App switcher.** A thin "LeetCode | Log" bar above each app's header, rendered by `appSwitcher()` in `ui.js`. It's only links. Each server reports the addresses from its environment at `GET /api/apps`:
+**App shell.** The same layout as training-log: the app name in the top-left corner, a header bar across the top (today's date on the left, the app's actions on the right), page nav down the left, and the page beside it. On narrow screens the nav becomes a row of links under the header.
+
+**App switcher.** "LeetCode | Log" links under an **Apps** label in the left column, below the page nav, rendered by `appSwitcher()` in `ui.js`. It's only links. Each server reports the addresses from its environment at `GET /api/apps`:
 
 | Variable | Default |
 |---|---|
@@ -124,7 +126,7 @@ timer        activity_id · started_at · block_started_at · banked_sec · paus
 
 ### Pages
 
-**Header (every page):** app switcher · **Week** · **Log** · timer · **+ Log time**
+**Shell (every page):** header bar with today, the timer and **+ Log time** · left column with **Week** · **Log**, then the app switcher
 
 **Week** (the front page). Answers "am I on plan this week?"
 
