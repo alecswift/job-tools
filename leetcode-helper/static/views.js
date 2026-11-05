@@ -41,14 +41,15 @@ export function viewPlan(state) {
     if (ui.planHide && complete) continue;
     groups.push(`<section class="day${complete ? " complete" : ""}"><div class="day-head"><h2>Group ${group}<small>#${items[0].n}–${items[items.length - 1].n}</small></h2><span class="count">${nDone}/${items.length}</span></div>`
       + items.map(p => {
-        const topic = TOPICS[p.topic];
+        // No topic or approach note here: both give the solution away before the problem is tried
+        const meta = `${p.src === "lc" ? `<span class="extra">Extra</span>` : ""}${p.premium ? `<span class="prem">premium</span>${NC_FREE[p.slug] ? `<a class="nc-link" href="https://neetcode.io/problems/${NC_FREE[p.slug]}" target="_blank" rel="noopener">free on NeetCode</a>` : ""}` : ""}${trackNote(logged.get(p.slug))}`;
         return `<div class="prob${done.has(p.slug) ? " is-done" : ""}${quiz.has(p.slug) && !done.has(p.slug) ? " is-quiz" : ""}">
           ${done.has(p.slug)
             ? `<input type="checkbox" class="chk" id="c-${p.slug}" data-s="${p.slug}" aria-label="${esc(p.name)}: logged" aria-disabled="true" title="Logged. Delete it from the Log to untick it." checked>`
             : `<input type="checkbox" class="chk" id="c-${p.slug}" data-s="${p.slug}" aria-label="Log ${esc(p.name)}" title="Log it to tick it off"${quiz.has(p.slug) ? " data-partial" : ""}>`}
           <span class="pnum">${p.n}</span>
           <div class="pmain"><a class="lc" href="https://leetcode.com/problems/${p.slug}/" target="_blank" rel="noopener">${esc(p.name)}</a>
-            <div class="meta"><span class="topic" style="--c:${depthCol(topic.depth)}">${esc(topic.name)}</span>${p.src === "lc" ? `<span class="extra">Extra</span><span>${esc(p.note)}</span>` : ""}${p.premium ? `<span class="prem">premium</span>${NC_FREE[p.slug] ? `<a class="nc-link" href="https://neetcode.io/problems/${NC_FREE[p.slug]}" target="_blank" rel="noopener">free on NeetCode</a>` : ""}` : ""}${trackNote(logged.get(p.slug))}</div></div>
+            ${meta ? `<div class="meta">${meta}</div>` : ""}</div>
           <div class="pright"><button type="button" class="qbtn" data-q="${p.slug}" aria-pressed="${quiz.has(p.slug)}" title="Done via NeetCode quiz">Quiz</button><span class="diff ${DIFF[p.diff]}">${DIFF[p.diff]}</span></div></div>`;
       }).join("") + `</section>`);
   }
