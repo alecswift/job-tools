@@ -10,7 +10,7 @@ export const ui = {
 };
 
 export const TOPICS = Object.fromEntries(PLAN.topics.map(t => [t.key, t]));
-const PACE = 3;
+const PACE = 2; // new problems per day: the plan is shown in groups of this many
 const depthCol = d => `var(--d${d})`;
 
 // ---------- plan ----------
@@ -29,15 +29,57 @@ function trackNote(tracked) {
   return `<span class="track" title="Next retry ${fmtDate(tracked.dueDate)}">retry ${rel(tracked.daysUntilDue)}</span>`;
 }
 
+// Phase 1 is the main plan. Phase 2 ("phase": 2 in plan.js) is set aside for after it: rarely asked, or the same solution as another problem.
+const PHASE1 = PLAN.problems.filter(p => p.phase !== 2), PHASE2 = PLAN.problems.filter(p => p.phase === 2);
+
 export function viewPlan(state) {
-  const { done, quiz } = planSets(state), planProblems = PLAN.problems;
+  const { done, quiz } = planSets(state);
   const logged = new Map(state.problems.map(p => [p.slug, p]));
   const isDone = s => done.has(s) || quiz.has(s);
-  const quizOnly = [...quiz].filter(s => !done.has(s)).length, both = quiz.size - quizOnly, doneCount = done.size + quizOnly;
+  const quizOnly = [...quiz].filter(s => !done.has(s)).length, both = quiz.size - quizOnly;
   const offPlan = state.problems.filter(p => !PLAN_SLUGS.has(p.slug)).length;
+  const count = list => {
+    const logged1 = list.filter(p => done.has(p.slug)).length, quiz1 = list.filter(p => quiz.has(p.slug) && !done.has(p.slug)).length;
+    return { logged: logged1, quiz: quiz1, done: logged1 + quiz1, total: list.length, left: list.length - logged1 - quiz1 };
+  };
+  const c1 = count(PHASE1), c2 = count(PHASE2);
+  const p1Groups = groupsHtml(PHASE1, { done, quiz, logged, isDone });
+  const p2Groups = groupsHtml(PHASE2, { done, quiz, logged, isDone });
+  return `<div class="plan">
+    <header>
+      <div class="label">NeetCode 150 + 62 extras</div>
+      <h1>Scattered Plan</h1>
+      <p class="lede">All <b>150 roadmap problems</b> plus <b>62 high-frequency LeetCode problems</b>, shuffled so no topic runs back-to-back. Topics only unlock once their parents on the roadmap are about half done, and the top of the tree is weighted heavier, so the first third of the plan is mostly arrays, pointers, stacks and searches, with their harder tails resurfacing later as review.</p>
+      <p class="lede"><b>Phase 1</b> is the ${c1.total} problems to finish first. The other <b>${c2.total}</b> are in <b>Phase 2</b>, at the bottom, for later: they're rarely asked, or solved the same way as a Phase 1 problem.</p>
+    </header>
+    <label class="toggle"><input type="checkbox" id="planHide" ${ui.planHide ? "checked" : ""}> Hide finished groups</label>
+    <div class="progress">
+      <div class="prow"><span>Phase 1: <b>${c1.done}</b> / ${c1.total} done · ${c1.logged} logged, ${c1.quiz} quiz only${both ? `, ${both} logged after quiz` : ""}${offPlan ? ` · +${offPlan} off-plan logged` : ""}</span><span>${c1.left} left · about ${Math.ceil(c1.left / PACE)} days at ${PACE} a day</span></div>
+      <div class="bar"><i style="width:${c1.logged / c1.total * 100}%"></i><i class="q" style="width:${c1.quiz / c1.total * 100}%"></i></div>
+      <div class="prow"><span>Phase 2: <b>${c2.done}</b> / ${c2.total} done</span></div>
+    </div>
+    <div class="strip-box">
+      <div class="label">Plan shape · each tick is one problem, colored by roadmap depth · short ticks are Phase 2</div>
+      <div class="strip">${PLAN.problems.map(p => `<span class="${done.has(p.slug) ? "done" : quiz.has(p.slug) ? "quiz" : ""}${p.phase === 2 ? " later" : ""}" title="#${p.n} ${esc(p.name)}${p.phase === 2 ? " (Phase 2)" : ""}" style="--c:${depthCol(TOPICS[p.topic].depth)}"></span>`).join("")}</div>
+      <div class="legend">${DEPTH_NAMES.map((name, d) => `<span style="--c:${depthCol(d)}">${name}</span>`).join("")}</div>
+    </div>
+    <div class="days">${p1Groups || `<div class="empty">Every Phase 1 group is finished.</div>`}</div>
+    <section class="phase2">
+      <div class="label">Later</div>
+      <h2>Phase 2</h2>
+      <p class="lede">Tackle these after Phase 1, at a slower pace. ${c2.left} of ${c2.total} left.</p>
+      <div class="days">${p2Groups || `<div class="empty">Every Phase 2 group is finished.</div>`}</div>
+    </section>
+    <p class="foot">A tick means the problem is logged in the retry tracker. Ticking the box opens the Log dialog, and the tick appears once you save; closing the dialog leaves it unticked. To untick a logged problem, delete it from the Log. The <b>Quiz</b> button marks a problem done through the NeetCode quiz without logging it: its box shows a dot, it counts toward progress, and ticking the box later logs it properly. Logged problems show when they're next due. Problem names open on LeetCode. Problems marked <i>premium</i> are locked there, so they also link to the free version on NeetCode. Your marks are saved to the server, in <span class="mono">data.json</span>.</p>
+    <p class="foot">The 150 roadmap problems and their topics are the <a href="https://neetcode.io/practice" target="_blank" rel="noopener">NeetCode 150</a>, by NeetCode. This project is not affiliated with or endorsed by NeetCode or LeetCode.</p>
+  </div>`;
+}
+
+// One phase's problems in groups of PACE, numbered from 1 within the phase
+function groupsHtml(list, { done, quiz, logged, isDone }) {
   const groups = [];
-  for (let i = 0, group = 1; i < planProblems.length; i += PACE, group++) {
-    const items = planProblems.slice(i, i + PACE), nDone = items.filter(p => isDone(p.slug)).length, complete = nDone === items.length;
+  for (let i = 0, group = 1; i < list.length; i += PACE, group++) {
+    const items = list.slice(i, i + PACE), nDone = items.filter(p => isDone(p.slug)).length, complete = nDone === items.length;
     if (ui.planHide && complete) continue;
     groups.push(`<section class="day${complete ? " complete" : ""}"><div class="day-head"><h2>Group ${group}<small>#${items[0].n}–${items[items.length - 1].n}</small></h2><span class="count">${nDone}/${items.length}</span></div>`
       + items.map(p => {
@@ -53,26 +95,7 @@ export function viewPlan(state) {
           <div class="pright"><button type="button" class="qbtn" data-q="${p.slug}" aria-pressed="${quiz.has(p.slug)}" title="Done via NeetCode quiz">Quiz</button><span class="diff ${DIFF[p.diff]}">${DIFF[p.diff]}</span></div></div>`;
       }).join("") + `</section>`);
   }
-  return `<div class="plan">
-    <header>
-      <div class="label">NeetCode 150 + 62 extras</div>
-      <h1>Scattered Plan</h1>
-      <p class="lede">All <b>150 roadmap problems</b> plus <b>62 high-frequency LeetCode problems</b>, shuffled so no topic runs back-to-back. Topics only unlock once their parents on the roadmap are about half done, and the top of the tree is weighted heavier, so the first third of the plan is mostly arrays, pointers, stacks and searches, with their harder tails resurfacing later as review.</p>
-    </header>
-    <label class="toggle"><input type="checkbox" id="planHide" ${ui.planHide ? "checked" : ""}> Hide finished groups</label>
-    <div class="progress">
-      <div class="prow"><span><b>${doneCount}</b> / ${planProblems.length} done · ${done.size} logged, ${quizOnly} quiz only${both ? `, ${both} logged after quiz` : ""}${offPlan ? ` · +${offPlan} off-plan logged` : ""}</span><span>${Math.ceil(planProblems.length / PACE)} groups of ${PACE} · ${Math.ceil((planProblems.length - doneCount) / PACE)} left</span></div>
-      <div class="bar"><i style="width:${done.size / planProblems.length * 100}%"></i><i class="q" style="width:${quizOnly / planProblems.length * 100}%"></i></div>
-    </div>
-    <div class="strip-box">
-      <div class="label">Plan shape · each tick is one problem, colored by roadmap depth</div>
-      <div class="strip">${planProblems.map(p => `<span class="${done.has(p.slug) ? "done" : quiz.has(p.slug) ? "quiz" : ""}" title="#${p.n} ${esc(p.name)}" style="--c:${depthCol(TOPICS[p.topic].depth)}"></span>`).join("")}</div>
-      <div class="legend">${DEPTH_NAMES.map((name, d) => `<span style="--c:${depthCol(d)}">${name}</span>`).join("")}</div>
-    </div>
-    <div class="days">${groups.join("") || `<div class="empty">Every group is finished.</div>`}</div>
-    <p class="foot">A tick means the problem is logged in the retry tracker. Ticking the box opens the Log dialog, and the tick appears once you save; closing the dialog leaves it unticked. To untick a logged problem, delete it from the Log. The <b>Quiz</b> button marks a problem done through the NeetCode quiz without logging it: its box shows a dot, it counts toward progress, and ticking the box later logs it properly. Logged problems show when they're next due. Problem names open on LeetCode. Problems marked <i>premium</i> are locked there, so they also link to the free version on NeetCode. Your marks are saved to the server, in <span class="mono">data.json</span>.</p>
-    <p class="foot">The 150 roadmap problems and their topics are the <a href="https://neetcode.io/practice" target="_blank" rel="noopener">NeetCode 150</a>, by NeetCode. This project is not affiliated with or endorsed by NeetCode or LeetCode.</p>
-  </div>`;
+  return groups.join("");
 }
 
 // ---------- queue ----------

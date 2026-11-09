@@ -1,13 +1,13 @@
 // Shared front-end helpers for every job-tools app. Served by each app at /design/ui.js.
 
 // Where each app runs, unless the server says otherwise (GET /api/apps reports LEETCODE_URL and LOG_URL when set).
-const DEFAULT_APPS = { leetcode: "http://localhost:8001", log: "http://localhost:8002" };
-const APP_NAMES = { leetcode: "LeetCode", log: "Log" };
+const DEFAULT_APPS = { leetcode: "http://localhost:8001", log: "http://localhost:8002", gfi: "http://localhost:8004" };
+const APP_NAMES = { leetcode: "LeetCode", log: "Log", gfi: "GFI Finder" };
 
 export const $ = s => document.querySelector(s);
 export const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-// The "LeetCode | Log" links in the side column, under the page nav. current is this app's key. Only links: the apps stay separate.
+// The "LeetCode | Log | GFI Finder" links in the side column, under the page nav. current is this app's key. Only links: the apps stay separate.
 // Drawn straight away with the defaults so the page doesn't jump, then pointed at the server's addresses.
 export async function appSwitcher(current) {
   const bar = document.createElement("div");

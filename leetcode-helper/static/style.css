@@ -60,10 +60,13 @@ th[data-dir]::after { content: attr(data-dir); margin-left: 4px; }
 .strip span { background: var(--c); border-radius: 1px; }
 .strip span.done { opacity: .25; }
 .strip span.quiz { opacity: .25; background: repeating-linear-gradient(45deg, var(--c) 0 2px, transparent 2px 4px); }
+.strip span.later { align-self: end; height: 40%; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend span::before { content: ""; width: 10px; height: 10px; border-radius: 2px; background: var(--c); }
 .days { display: grid; gap: 22px; }
+.phase2 { display: grid; gap: 10px; border-top: 2px solid var(--line); padding-top: 22px; }
+.phase2 .days { margin-top: 12px; }
 .day { display: grid; gap: 6px; }
 .day-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 .day-head h2 { font-size: 18px; }
