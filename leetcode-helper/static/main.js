@@ -69,7 +69,6 @@ document.addEventListener("input", e => {
 document.addEventListener("change", e => {
   if (e.target.matches(".chk")) tickPlan(e.target);
   if (e.target.id === "planHide") { ui.planHide = e.target.checked; local.set("ncplan.hide", ui.planHide); render(); }
-  if (e.target.id === "fp") { ui.logFilter.pattern = e.target.value; $("#logBody").innerHTML = logRows(state()); }
   if (e.target.id === "fs") { ui.logFilter.status = e.target.value; $("#logBody").innerHTML = logRows(state()); }
 });
 document.addEventListener("submit", async e => {

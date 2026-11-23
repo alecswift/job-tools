@@ -28,7 +28,9 @@ Everything is saved to `data.json` in this folder. Back up or copy that one file
 
 - **Plan** (the front page): the Scattered Plan, the NeetCode 150 plus 62 extra LeetCode problems in groups of 2 (one day's new problems). It's split in two: **Phase 1** (158 problems) comes first, and **Phase 2** (54 problems, `"phase": 2` in `static/plan.js`) is a separate bucket at the bottom for later, holding problems that are rarely asked or solved the same way as a Phase 1 problem. Progress and "days left" count Phase 1 only. A tick means the problem is logged in the retry tracker: ticking it opens the Log dialog with its details filled in, and the tick appears once you save (closing the dialog leaves it unticked). To untick a logged problem, delete it from the Log. The **Quiz** button marks a problem done through the NeetCode quiz without logging it; its box shows a dot and it counts toward progress. Quiz marks are saved in `data.json`. Problems that are in the tracker show when they're next due, and logged problems outside the plan are counted as "off-plan".
 - **Retry queue**: problems due for a retry, sorted by priority, plus what's coming up and what you've mastered. The note at the top suggests how to pace today's session.
-- **Log**: every problem in one table, with sortable columns, search, and pattern and status filters. Green column headers are calculated.
+- **Log**: every problem in one table, with sortable columns, search, and a status filter. Green column headers are calculated.
+
+Neither page shows a problem's pattern or notes, since they give the solution away before a retry. Open **Edit** to see them.
 - **How it works**: the formulas, filled in with your current settings, and the settings form. Edit the weights, spacing, mastery threshold, target times and pattern list, then save.
 
 The **Apps** links under the page nav switch to the [Log](../log/README.md) app. Set `LEETCODE_URL` and `LOG_URL` if either app runs somewhere other than ports 8001 and 8002.

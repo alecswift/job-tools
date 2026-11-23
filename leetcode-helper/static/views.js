@@ -6,7 +6,7 @@ import { esc, fmtDate, rel, pill, local, DIFF, STATUS, HELP_GUIDE } from "./util
 export const ui = {
   planHide: local.get("ncplan.hide", false),
   logSort: { key: "priority", dir: -1 },
-  logFilter: { q: "", pattern: "", status: "" },
+  logFilter: { q: "", status: "" },
 };
 
 export const TOPICS = Object.fromEntries(PLAN.topics.map(t => [t.key, t]));
@@ -129,13 +129,14 @@ export function viewQueue(state) {
     </section>
     ${mastered.length ? `<details class="list"><summary><h2 style="display:inline">Mastered (${mastered.length})</h2></summary><div class="list" style="margin-top:8px">${mastered.map(p => item(p, null, false, maxPriority)).join("")}</div></details>` : ""}`;
 }
+// No pattern here: it gives the solution away before the retry
 function item(p, rank, isDue, maxPriority) {
   const barWidth = Math.min(100, p.priority / maxPriority * 100);
   return `<div class="item${isDue ? " due" : ""}${rank ? "" : " norank"}">
     ${rank ? `<span class="rank">${rank}</span>` : ""}
     <div style="min-width:0">
       <a class="name" href="${esc(p.link)}" target="_blank" rel="noopener">${p.lc ? `<span class="mono muted">${p.lc}.</span> ` : ""}${esc(p.name)}</a>
-      <div class="meta"><span class="diff ${p.difficulty}">${p.difficulty}</span>${p.pattern ? `<span>${esc(p.pattern)}</span>` : ""}
+      <div class="meta"><span class="diff ${p.difficulty}">${p.difficulty}</span>
         <span>Struggle <b class="mono">${p.struggle}</b></span><span>Attempt ${p.attempts}</span>
         ${p.status === STATUS.mastered ? "" : `<span>${rel(p.daysUntilDue)}</span>`}
         ${isDue ? `<span class="pbar" title="Retry priority">Priority <i style="--w:${barWidth}%"></i><b class="mono">${p.priority}</b></span>` : ""}</div>
@@ -145,22 +146,21 @@ function item(p, rank, isDue, maxPriority) {
 }
 
 // ---------- log ----------
+// No pattern column or filter, and no notes preview: they give the solution away before a retry. Both are in the Edit dialog.
 const COLS = [
-  ["lc", "LC #", "num"], ["name", "Problem"], ["difficulty", "Diff"], ["pattern", "Pattern"], ["lastAttempted", "Last"],
+  ["lc", "LC #", "num"], ["name", "Problem"], ["difficulty", "Diff"], ["lastAttempted", "Last"],
   ["attempts", "Att.", "num"], ["help", "Help", "num"], ["confidence", "Conf.", "num"], ["time", "Min", "num"],
   ["timeScore", "Time sc.", "num calc"], ["struggle", "Struggle", "num calc"], ["interval", "Interval", "num calc"],
   ["dueDate", "Due", "calc"], ["priority", "Priority", "num calc"], ["status", "Status", "calc"],
 ];
-export const TEXT_COLS = ["name", "pattern", "difficulty", "status"];  // sort A→Z first; the rest high→low
+export const TEXT_COLS = ["name", "difficulty", "status"];  // sort A→Z first; the rest high→low
 
 export function viewLog(state) {
   const { logSort, logFilter } = ui;
-  const pats = [...new Set([...state.settings.patterns, ...state.problems.map(p => p.pattern).filter(Boolean)])];
   return `
     <div class="row spread"><h1>Log</h1><span class="muted">${state.problems.length} problems · <span style="color:var(--accent)">green headers</span> are calculated</span></div>
     <div class="toolbar">
       <input id="q" type="search" placeholder="Search problems or notes" value="${esc(logFilter.q)}" aria-label="Search">
-      <select id="fp" aria-label="Pattern"><option value="">All patterns</option>${pats.map(p => `<option ${p === logFilter.pattern ? "selected" : ""}>${esc(p)}</option>`).join("")}</select>
       <select id="fs" aria-label="Status"><option value="">Any status</option>${Object.values(STATUS).map(s => `<option ${s === logFilter.status ? "selected" : ""}>${s}</option>`).join("")}</select>
     </div>
     <div class="table-wrap"><table>
@@ -173,14 +173,13 @@ export function logRows(state) {
   const q = logFilter.q.toLowerCase();
   const rows = state.problems.filter(p =>
     (!q || (p.name + " " + (p.notes || "") + " " + (p.lc ?? "")).toLowerCase().includes(q)) &&
-    (!logFilter.pattern || p.pattern === logFilter.pattern) &&
     (!logFilter.status || p.status === logFilter.status));
   rows.sort((a, b) => { const va = a[key], vb = b[key]; if (va == null) return 1; if (vb == null) return -1; return (va > vb ? 1 : va < vb ? -1 : 0) * dir; });
   if (!rows.length) return `<tr><td colspan="${COLS.length + 1}" class="muted" style="text-align:center;padding:24px">${state.problems.length ? "No problems match." : "No problems yet. Use “Log problem” to add your first one."}</td></tr>`;
   return rows.map(p => `<tr>
     <td class="num">${p.lc ?? ""}</td>
-    <td><a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.name)}</a>${p.notes ? ` <span class="muted" title="${esc(p.notes)}">✎</span>` : ""}</td>
-    <td><span class="diff ${p.difficulty}">${p.difficulty[0]}</span></td><td>${esc(p.pattern)}</td><td>${fmtDate(p.lastAttempted)}</td>
+    <td><a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.name)}</a>${p.notes ? ` <span class="muted" title="Has notes">✎</span>` : ""}</td>
+    <td><span class="diff ${p.difficulty}">${p.difficulty[0]}</span></td><td>${fmtDate(p.lastAttempted)}</td>
     <td class="num">${p.attempts}</td><td class="num">${p.help}</td><td class="num">${p.confidence}</td><td class="num">${p.time ?? "—"}</td>
     <td class="num">${p.timeScore ?? "—"}</td><td class="num">${p.struggle}</td><td class="num">${p.interval}d</td>
     <td>${fmtDate(p.dueDate)}</td><td class="num">${p.priority}</td><td>${pill(p.status)}</td>
